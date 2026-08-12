@@ -26,6 +26,7 @@ dev = [
 
 [project.scripts]
 lgus-dat = "lgus_dat.cli.commands:main"
+lgus-dat-gui = "lgus_dat.ui.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

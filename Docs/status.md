@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.1.0`
+`v0.2.0`
 
 ### Status
 
-Initial scaffold complete. The project has a runnable Python package with parser, sequence processor, CSV output writer, CLI, and automated tests.
+Desktop UI added. The application now has a tkinter-based offline interface for selecting `.dat` files, previewing raw records, assigning IN/OUT statuses, and exporting CSV.
 
 ### Implemented
 
@@ -20,6 +20,7 @@ Initial scaffold complete. The project has a runnable Python package with parser
 - [x] CLI entry point (`src/lgus_dat/cli/commands.py`)
 - [x] Automated tests (`tests/test_processor.py`)
 - [x] Packaging configuration (`pyproject.toml`, `requirements.txt`)
+- [x] Desktop tkinter UI (`src/lgus_dat/ui/app.py`) with open/process/save workflow
 
 ### In Progress
 
@@ -33,5 +34,6 @@ Initial scaffold complete. The project has a runnable Python package with parser
 | ------- | ---- | ----- |
 | v0.0.1 | 2026-08-12 | Initial blueprint and project scaffolding added. |
 | v0.1.0 | 2026-08-12 | Python package scaffold with parser, processor, CLI, and tests. |
+| v0.2.0 | 2026-08-12 | Desktop tkinter UI for open/process/save workflow. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

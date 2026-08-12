@@ -20,6 +20,7 @@ src/
     processing/     Sequence logic
     output/         CSV writers
     cli/            Command-line entry point
+    ui/             Desktop tkinter interface
 
 tests/              Automated tests
 Docs/               Blueprint and status
@@ -47,3 +48,13 @@ python -m lgus_dat.cli.commands sample.dat
 # or
 lgus-dat sample.dat --output-dir output --archive-dir archive
 ```
+
+Launch the desktop UI:
+
+```bash
+python -m lgus_dat.ui.app
+# or
+lgus-dat-gui
+```
+
+The UI lets you open a `.dat` file, preview the raw records, process them into IN/OUT rows, and save the resulting CSV.
