@@ -1,0 +1,49 @@
+# LGUS-DAT
+
+MB10-VL Sequential IN/OUT `.DAT` Processor.
+
+This project consumes raw `.dat` attendance exports from a ZKTeco MB10-VL biometric terminal and assigns `IN`/`OUT` status by chronological punch sequence.
+
+## Core Rule
+
+> For each employee and calendar date, sort raw punches chronologically and alternate `IN`/`OUT` starting with `IN`.
+
+See `Docs/MB10-VL_Sequential_IN_OUT_Dev_Blueprint.md` for full requirements.
+
+## Project Structure
+
+```
+src/
+  lgus_dat/
+    parser/         .DAT parsing
+    domain/         Attendance models
+    processing/     Sequence logic
+    output/         CSV writers
+    cli/            Command-line entry point
+
+tests/              Automated tests
+Docs/               Blueprint and status
+```
+
+## Usage
+
+Install in editable mode:
+
+```bash
+pip install -e .
+pip install -e ".[dev]"
+```
+
+Run tests:
+
+```bash
+pytest
+```
+
+Process a `.dat` file:
+
+```bash
+python -m lgus_dat.cli.commands sample.dat
+# or
+lgus-dat sample.dat --output-dir output --archive-dir archive
+```
