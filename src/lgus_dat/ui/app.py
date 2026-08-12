@@ -30,6 +30,7 @@ class ProcessorApp:
         self.registry = AttendanceRegistry()
 
         self._build_ui()
+        self._update_registry_label()
 
         if initial_file:
             self._load_file(initial_file)
@@ -40,8 +41,10 @@ class ProcessorApp:
         toolbar.pack(fill=tk.X)
 
         ttk.Button(toolbar, text="Open .DAT", command=self._open_file).pack(side=tk.LEFT, padx=(0, 4))
-        ttk.Button(toolbar, text="Process", command=self._process).pack(side=tk.LEFT, padx=4)
+        ttk.Button(toolbar, text="Process (F5)", command=self._process).pack(side=tk.LEFT, padx=4)
         ttk.Button(toolbar, text="Save CSV", command=self._save_csv).pack(side=tk.LEFT, padx=4)
+
+        self.root.bind("<F5>", lambda _event: self._process())
 
         registry_toolbar = ttk.Frame(self.root, padding=8)
         registry_toolbar.pack(fill=tk.X)
