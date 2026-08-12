@@ -1,0 +1,652 @@
+# MB10-VL Sequential IN/OUT `.DAT` Processor --- Development Blueprint
+
+## 1. Project Objective
+
+Build a small, reliable attendance-processing application that consumes
+raw `.dat` attendance exports from a ZKTeco MB10-VL biometric terminal
+and assigns attendance status by punch sequence.
+
+The required business rule is:
+
+-   1st punch of an employee on a given calendar date = `IN`
+-   2nd punch = `OUT`
+-   3rd punch = `IN`
+-   4th punch = `OUT`
+-   Continue alternating for subsequent punches.
+
+The MB10-VL itself should **not** be responsible for deciding IN/OUT.
+Its punch-state functionality will be disabled, and the application will
+derive the status from chronological punch order.
+
+------------------------------------------------------------------------
+
+## 2. Device Configuration
+
+Configure the MB10-VL as follows:
+
+  Setting                Value
+  ---------------------- ------------
+  Punch State Mode       `OFF`
+  Punch State Required   `OFF`
+  Auto Mode              Do not use
+  Manual and Auto Mode   Do not use
+  Fixed Mode             Do not use
+
+### Rationale
+
+`Punch State Mode = OFF` disables the device punch-state function.
+
+`Punch State Required = OFF` means the employee does not have to select
+an attendance state after biometric verification.
+
+The terminal should therefore record raw verification/punch events
+without requiring the user to choose IN or OUT.
+
+The application determines IN/OUT later from the chronological sequence.
+
+------------------------------------------------------------------------
+
+## 3. Input Format
+
+The current sample `.dat` file supplied during design contained records
+similar to:
+
+``` text
+2    2026-08-12 08:03:27    1    0    15    0
+2    2026-08-12 08:05:12    1    0    15    0
+```
+
+The application must initially support this whitespace-delimited
+structure.
+
+### Known fields from the sample
+
+``` text
+Field 1: Employee/User ID
+Field 2: Date
+Field 3: Time
+Field 4: Additional device field
+Field 5: Additional device field
+Field 6: Additional device field
+Field 7: Additional device field
+```
+
+The exact semantic meaning of fields 4--7 should **not be assumed unless
+verified against the MB10-VL documentation or additional test exports**.
+
+The processor must preserve the original fields rather than destroying
+information.
+
+### Important parsing requirement
+
+Do not split the date and time into unrelated records. Combine them into
+a single timestamp:
+
+``` text
+2026-08-12 08:03:27
+```
+
+Use a proper datetime value internally.
+
+------------------------------------------------------------------------
+
+## 4. Core Business Logic
+
+### Grouping
+
+Records must be grouped by:
+
+1.  Employee/User ID
+2.  Calendar date
+
+Within each group, sort records by timestamp ascending.
+
+### Status assignment
+
+For each employee/date group:
+
+``` text
+record index 0 -> IN
+record index 1 -> OUT
+record index 2 -> IN
+record index 3 -> OUT
+record index 4 -> IN
+record index 5 -> OUT
+...
+```
+
+Equivalent rule:
+
+``` text
+if zero_based_index % 2 == 0:
+    status = IN
+else:
+    status = OUT
+```
+
+### Example
+
+Input:
+
+``` text
+Employee 1001
+2026-08-12 07:58:12
+2026-08-12 12:01:04
+2026-08-12 13:02:19
+2026-08-12 17:06:31
+```
+
+Output:
+
+``` text
+Employee 1001 | 2026-08-12 07:58:12 | IN
+Employee 1001 | 2026-08-12 12:01:04 | OUT
+Employee 1001 | 2026-08-12 13:02:19 | IN
+Employee 1001 | 2026-08-12 17:06:31 | OUT
+```
+
+------------------------------------------------------------------------
+
+## 5. Sequence Must Be Independent Per Employee
+
+Never alternate statuses globally across the entire file.
+
+Example:
+
+``` text
+Employee 1
+  08:00 -> IN
+  12:00 -> OUT
+  13:00 -> IN
+  17:00 -> OUT
+
+Employee 2
+  08:10 -> IN
+  12:05 -> OUT
+  13:05 -> IN
+  17:10 -> OUT
+```
+
+Employee 2 must start at `IN` regardless of how many records Employee 1
+has.
+
+------------------------------------------------------------------------
+
+## 6. Sequence Must Reset Each Calendar Day
+
+The sequence starts over for each employee on each calendar date.
+
+Example:
+
+``` text
+2026-08-12
+  08:00 -> IN
+  17:00 -> OUT
+
+2026-08-13
+  08:01 -> IN
+  17:01 -> OUT
+```
+
+Do not carry an odd/even state from one day into the next.
+
+------------------------------------------------------------------------
+
+## 7. Duplicate Punches
+
+The application should detect duplicate records.
+
+A duplicate should be defined conservatively as records having the same:
+
+-   Employee ID
+-   Timestamp
+-   Original record identity/content, where available
+
+Do **not** automatically discard near-duplicates such as:
+
+``` text
+08:03:27
+08:03:29
+```
+
+unless an explicit configurable duplicate window is introduced.
+
+This is important because two rapid biometric verifications may be
+legitimate raw events.
+
+### Recommended initial behavior
+
+-   Preserve all source records.
+-   Do not silently delete records.
+-   Report exact duplicates separately.
+-   Make duplicate handling configurable in a later version.
+
+------------------------------------------------------------------------
+
+## 8. Odd Number of Daily Punches
+
+An employee may have an odd number of punches:
+
+``` text
+08:00 -> IN
+12:00 -> OUT
+13:00 -> IN
+```
+
+This means there is no matching OUT punch for the final IN.
+
+The processor should **not invent a missing OUT time**.
+
+Instead:
+
+-   assign the final record `IN`
+-   flag the employee/date as `UNPAIRED`
+-   include it in an exception report
+
+Example:
+
+``` text
+Employee: 1001
+Date: 2026-08-12
+Punches: 3
+Status: UNPAIRED_FINAL_IN
+```
+
+This allows payroll/attendance staff to investigate rather than hiding
+an anomaly.
+
+------------------------------------------------------------------------
+
+## 9. First Version Output
+
+The application should produce a processed attendance output containing
+at minimum:
+
+``` text
+Employee ID
+Date
+Time
+Timestamp
+Status
+Original Record
+Exception Flag
+```
+
+Example:
+
+``` text
+1001 | 2026-08-12 | 07:58:12 | 2026-08-12 07:58:12 | IN  | <original> | 
+1001 | 2026-08-12 | 12:01:04 | 2026-08-12 12:01:04 | OUT | <original> |
+1001 | 2026-08-12 | 13:02:19 | 2026-08-12 13:02:19 | IN  | <original> |
+1001 | 2026-08-12 | 17:06:31 | 2026-08-12 17:06:31 | OUT | <original> |
+```
+
+The original source data should remain recoverable.
+
+------------------------------------------------------------------------
+
+## 10. Preserve the Original `.DAT`
+
+Never modify the source `.dat` file in place.
+
+Recommended workflow:
+
+``` text
+/input/
+    attendance.dat
+
+/output/
+    attendance_processed.csv
+
+/archive/
+    original attendance.dat
+```
+
+If the application has an import workflow, it should copy/archive the
+original file before processing.
+
+------------------------------------------------------------------------
+
+## 11. Idempotency
+
+The same `.dat` file should be safe to process more than once.
+
+Processing the same input twice must produce the same output and must
+not double the attendance records.
+
+If a database is used, create a deterministic record identity based on
+the original source record and/or a stable hash.
+
+------------------------------------------------------------------------
+
+## 12. Timestamp Handling
+
+Use the device timestamp as the source of truth.
+
+Requirements:
+
+-   Parse the timestamp strictly.
+-   Sort chronologically.
+-   Preserve seconds.
+-   Do not round timestamps.
+-   Do not silently convert time zones.
+-   Make the application timezone configurable if needed.
+
+For the initial deployment, assume the device and processing machine use
+the same local timezone unless configuration says otherwise.
+
+------------------------------------------------------------------------
+
+## 13. Validation
+
+Before processing, validate:
+
+-   File exists.
+-   File is readable.
+-   Each non-empty record has the expected minimum number of fields.
+-   Employee ID is present.
+-   Date is valid.
+-   Time is valid.
+-   Timestamp is parseable.
+
+Malformed records should be reported rather than causing the entire file
+to fail.
+
+Example error:
+
+``` text
+Line 42:
+Invalid timestamp: 2026-99-99 25:61:00
+```
+
+Continue processing valid records unless the error rate exceeds a
+configurable threshold.
+
+------------------------------------------------------------------------
+
+## 14. Recommended Architecture
+
+Keep the core business logic independent from the user interface.
+
+Suggested modules:
+
+``` text
+src/
+  parser/
+    dat_parser
+  domain/
+    attendance_record
+    punch_sequence
+  processing/
+    sequence_processor
+    duplicate_detector
+    exception_detector
+  output/
+    csv_writer
+    dat_writer (if required)
+  cli/
+    commands
+  tests/
+```
+
+The exact programming language/framework is up to the developer unless
+the surrounding project already dictates one.
+
+------------------------------------------------------------------------
+
+## 15. Core Processing Pseudocode
+
+``` text
+records = parse_dat_file(input_file)
+
+valid_records, invalid_records = validate(records)
+
+groups = group_by(
+    valid_records,
+    employee_id,
+    calendar_date
+)
+
+for each group:
+    sort group by timestamp ascending
+
+    for index, record in enumerate(group):
+        if index % 2 == 0:
+            record.status = IN
+        else:
+            record.status = OUT
+
+    if len(group) % 2 == 1:
+        mark group as UNPAIRED_FINAL_IN
+
+write_processed_output(records)
+write_exception_report(invalid_records, exceptions)
+```
+
+------------------------------------------------------------------------
+
+## 16. Test Cases
+
+The developer must create automated tests for at least the following.
+
+### Test 1 --- Two punches
+
+``` text
+08:00
+17:00
+```
+
+Expected:
+
+``` text
+08:00 IN
+17:00 OUT
+```
+
+### Test 2 --- Four punches
+
+``` text
+08:00
+12:00
+13:00
+17:00
+```
+
+Expected:
+
+``` text
+08:00 IN
+12:00 OUT
+13:00 IN
+17:00 OUT
+```
+
+### Test 3 --- Six punches
+
+Expected:
+
+``` text
+1 IN
+2 OUT
+3 IN
+4 OUT
+5 IN
+6 OUT
+```
+
+### Test 4 --- Odd number of punches
+
+``` text
+08:00
+12:00
+13:00
+```
+
+Expected:
+
+``` text
+08:00 IN
+12:00 OUT
+13:00 IN
+```
+
+And exception:
+
+``` text
+UNPAIRED_FINAL_IN
+```
+
+### Test 5 --- Multiple employees
+
+Verify that each employee starts their own sequence at `IN`.
+
+### Test 6 --- Multiple dates
+
+Verify that the sequence resets at midnight/date boundary.
+
+### Test 7 --- Unsorted input
+
+Input:
+
+``` text
+17:00
+08:00
+12:00
+```
+
+Expected after sorting:
+
+``` text
+08:00 IN
+12:00 OUT
+17:00 IN
+```
+
+### Test 8 --- Exact duplicate
+
+Verify that duplicates are detected/reported without silently deleting
+source information.
+
+### Test 9 --- Malformed record
+
+Verify that a bad line is reported while valid records continue
+processing.
+
+### Test 10 --- Same timestamp
+
+Two records for the same employee with identical timestamps must have a
+deterministic ordering. Preserve source-file order as the tie-breaker.
+
+------------------------------------------------------------------------
+
+## 17. Important Business Rule: Do Not Add "Smart" Attendance Logic Yet
+
+The first version should **not** automatically infer:
+
+-   lunch breaks
+-   overtime
+-   missed punches
+-   overnight shifts
+-   grace periods
+-   minimum punch intervals
+-   duplicate suppression windows
+-   shift schedules
+-   holidays
+-   lateness
+-   early departure
+
+Those are separate business rules.
+
+The initial processor has one deliberately simple rule:
+
+> **For each employee and calendar date, sort raw punches
+> chronologically and alternate IN/OUT starting with IN.**
+
+Keep this rule deterministic and auditable.
+
+------------------------------------------------------------------------
+
+## 18. Future Considerations
+
+The architecture should leave room for:
+
+-   employee master data
+-   department/branch mapping
+-   shift schedules
+-   overnight shifts
+-   configurable sequence reset rules
+-   duplicate detection windows
+-   manual correction workflow
+-   payroll export
+-   Excel/CSV export
+-   database storage
+-   web UI
+-   audit trail
+-   import history
+-   multiple MB10-VL devices
+-   device-specific parsers
+-   configurable status labels
+
+Do not implement these unless required by the initial project.
+
+------------------------------------------------------------------------
+
+## 19. Acceptance Criteria
+
+The project is considered successful when:
+
+1.  A raw MB10-VL `.dat` file can be imported.
+2.  Employee IDs and timestamps are correctly parsed.
+3.  Records are sorted chronologically per employee/date.
+4.  The first punch is assigned `IN`.
+5.  The second punch is assigned `OUT`.
+6.  The sequence continues `IN/OUT` alternately.
+7.  Each employee has an independent sequence.
+8.  Each calendar date starts a new sequence.
+9.  Odd punch counts are flagged rather than silently corrected.
+10. Malformed records are reported.
+11. Original source data is preserved.
+12. Reprocessing the same file does not duplicate data.
+13. Automated tests cover the core rules.
+14. The processor can produce a clean output suitable for integration
+    with the existing attendance/payroll system.
+
+------------------------------------------------------------------------
+
+## 20. Development Instruction for Devin
+
+Build the application around the following principle:
+
+> **The ZKTeco MB10-VL is a raw punch collector. The application is the
+> source of truth for sequential IN/OUT assignment.**
+
+Do not depend on the device's Automatic Status Switch for the core
+business rule.
+
+The device configuration is:
+
+``` text
+Punch State Mode     = OFF
+Punch State Required = OFF
+```
+
+The application rule is:
+
+``` text
+GROUP BY employee_id + calendar_date
+SORT BY timestamp ASCENDING
+
+1st punch = IN
+2nd punch = OUT
+3rd punch = IN
+4th punch = OUT
+...
+
+Odd final punch = flag as UNPAIRED_FINAL_IN
+```
+
+Keep the implementation deterministic, testable, auditable, and capable
+of preserving the original `.dat` records.
+
+Before implementing assumptions about fields 4--7 of the `.dat` format,
+inspect additional real MB10-VL exports and confirm their meaning.
