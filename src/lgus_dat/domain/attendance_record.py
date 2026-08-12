@@ -24,3 +24,4 @@ class AttendanceRecord:
     status: PunchStatus
     original_record: str
     exception_flag: Optional[str] = None
+    employee_name: Optional[str] = None

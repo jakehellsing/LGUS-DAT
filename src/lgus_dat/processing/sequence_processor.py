@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date
 from itertools import groupby
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 from lgus_dat.domain.attendance_record import AttendanceRecord, PunchStatus
 from lgus_dat.parser.dat_parser import ParsedRecord
@@ -30,7 +30,13 @@ def assign_status(index: int) -> PunchStatus:
     return PunchStatus.IN if index % 2 == 0 else PunchStatus.OUT
 
 
-def process_records(records: Iterable[ParsedRecord]) -> list[AttendanceRecord]:
+NameLookup = Optional[Callable[[str], Optional[str]]]
+
+
+def process_records(
+    records: Iterable[ParsedRecord],
+    name_lookup: NameLookup = None,
+) -> list[AttendanceRecord]:
     """Assign IN/OUT statuses per employee and calendar date.
 
     Groups by employee + date, sorts chronologically, then alternates starting
@@ -59,6 +65,7 @@ def process_records(records: Iterable[ParsedRecord]) -> list[AttendanceRecord]:
                     status=status,
                     original_record=raw.original_line,
                     exception_flag=exception,
+                    employee_name=name_lookup(employee_id) if name_lookup else None,
                 )
             )
 

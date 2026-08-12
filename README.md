@@ -16,6 +16,8 @@ See `Docs/MB10-VL_Sequential_IN_OUT_Dev_Blueprint.md` for full requirements.
 src/
   lgus_dat/
     parser/         .DAT parsing
+    importers/      Device master file importers
+    persistence/    SQLite employee/department registry
     domain/         Attendance models
     processing/     Sequence logic
     output/         CSV writers
@@ -58,3 +60,5 @@ lgus-dat-gui
 ```
 
 The UI lets you open a `.dat` file, preview the raw records, process them into IN/OUT rows, and save the resulting CSV.
+
+You can also import the device's `user.dat` to resolve employee names from numeric IDs and `department.dat` to build a department registry.
