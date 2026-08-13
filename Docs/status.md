@@ -4,7 +4,7 @@
 
 ### Current Version
 
-`v0.3.0`
+`v0.4.0`
 
 ### Status
 
@@ -25,6 +25,7 @@ Device master file importers and SQLite employee registry added. The UI can now 
 - [x] `department.dat` importer (`src/lgus_dat/importers/department_parser.py`)
 - [x] SQLite employee/department registry (`src/lgus_dat/persistence/registry.py`)
 - [x] UI/CSV name resolution from registry
+- [x] Employee/department management editor and binary `user.dat`/`department.dat` exporters
 
 ### In Progress
 
@@ -40,5 +41,6 @@ Device master file importers and SQLite employee registry added. The UI can now 
 | v0.1.0 | 2026-08-12 | Python package scaffold with parser, processor, CLI, and tests. |
 | v0.2.0 | 2026-08-12 | Desktop tkinter UI for open/process/save workflow. |
 | v0.3.0 | 2026-08-12 | `user.dat`/`department.dat` importers and SQLite employee registry. |
+| v0.4.0 | 2026-08-12 | Employee/department management editor and binary device-format exporters. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

@@ -54,6 +54,8 @@ def parse_department_dat(
         except UnicodeDecodeError:
             name = name_bytes.decode("latin-1", errors="replace").strip()
 
-        departments.append(Department(department_id=dept_id, name=name))
+        departments.append(
+            Department(department_id=dept_id, name=name, raw_record=record)
+        )
 
     return departments, errors

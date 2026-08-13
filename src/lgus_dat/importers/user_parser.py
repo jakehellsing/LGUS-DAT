@@ -54,6 +54,8 @@ def parse_user_dat(path: Path, record_size: int = 72) -> tuple[list[Employee], l
         except UnicodeDecodeError:
             name = name_bytes.decode("latin-1", errors="replace").strip()
 
-        employees.append(Employee(device_user_id=user_id, name=name))
+        employees.append(
+            Employee(device_user_id=user_id, name=name, raw_record=record)
+        )
 
     return employees, errors

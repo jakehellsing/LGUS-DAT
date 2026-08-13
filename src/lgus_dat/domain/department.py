@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True, slots=True)
@@ -11,3 +12,4 @@ class Department:
 
     department_id: int
     name: str
+    raw_record: Optional[bytes] = None

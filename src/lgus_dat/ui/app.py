@@ -15,6 +15,7 @@ from lgus_dat.output.csv_writer import write_csv
 from lgus_dat.parser.dat_parser import parse_dat_file
 from lgus_dat.persistence.registry import AttendanceRegistry
 from lgus_dat.processing.sequence_processor import process_records
+from lgus_dat.ui.management_dialog import ManagementDialog
 
 
 class ProcessorApp:
@@ -51,6 +52,7 @@ class ProcessorApp:
 
         ttk.Button(registry_toolbar, text="Import user.dat", command=self._import_user_dat).pack(side=tk.LEFT, padx=(0, 4))
         ttk.Button(registry_toolbar, text="Import department.dat", command=self._import_department_dat).pack(side=tk.LEFT, padx=4)
+        ttk.Button(registry_toolbar, text="Manage Employees", command=self._open_management).pack(side=tk.LEFT, padx=4)
 
         # File path label
         self.path_label = ttk.Label(self.root, text="No file selected", padding=8)
@@ -192,6 +194,9 @@ class ProcessorApp:
 
         write_csv(self.processed_records, Path(path))
         self._log(f"Saved CSV to {path}")
+
+    def _open_management(self) -> None:
+        ManagementDialog(self.root, self.registry, on_change=self._update_registry_label)
 
     def _import_user_dat(self) -> None:
         path = filedialog.askopenfilename(

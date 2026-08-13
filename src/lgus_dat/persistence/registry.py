@@ -22,36 +22,53 @@ class AttendanceRegistry:
         conn.row_factory = sqlite3.Row
         return conn
 
+    def _columns(self, conn: sqlite3.Connection, table: str) -> set[str]:
+        cursor = conn.execute(f"PRAGMA table_info({table})")
+        return {row["name"] for row in cursor.fetchall()}
+
     def _init_db(self) -> None:
         with self._connection() as conn:
             conn.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS departments (
                     department_id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL
+                    name TEXT NOT NULL,
+                    raw_record BLOB
                 );
 
                 CREATE TABLE IF NOT EXISTS employees (
                     device_user_id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
                     department_id INTEGER,
+                    raw_record BLOB,
                     FOREIGN KEY (department_id) REFERENCES departments (department_id)
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_employees_name ON employees (name);
                 """
             )
+            # Migrate older registries that may be missing the raw_record columns.
+            if "raw_record" not in self._columns(conn, "departments"):
+                conn.execute("ALTER TABLE departments ADD COLUMN raw_record BLOB")
+            if "raw_record" not in self._columns(conn, "employees"):
+                conn.execute("ALTER TABLE employees ADD COLUMN raw_record BLOB")
             conn.commit()
 
     def upsert_department(self, department: Department) -> None:
         with self._connection() as conn:
             conn.execute(
                 """
-                INSERT INTO departments (department_id, name)
-                VALUES (?, ?)
-                ON CONFLICT(department_id) DO UPDATE SET name = excluded.name
+                INSERT INTO departments (department_id, name, raw_record)
+                VALUES (?, ?, ?)
+                ON CONFLICT(department_id) DO UPDATE SET
+                    name = excluded.name,
+                    raw_record = excluded.raw_record
                 """,
-                (department.department_id, department.name),
+                (
+                    department.department_id,
+                    department.name,
+                    department.raw_record,
+                ),
             )
             conn.commit()
 
@@ -59,13 +76,35 @@ class AttendanceRegistry:
         with self._connection() as conn:
             conn.execute(
                 """
-                INSERT INTO employees (device_user_id, name, department_id)
-                VALUES (?, ?, ?)
+                INSERT INTO employees (device_user_id, name, department_id, raw_record)
+                VALUES (?, ?, ?, ?)
                 ON CONFLICT(device_user_id) DO UPDATE SET
                     name = excluded.name,
-                    department_id = excluded.department_id
+                    department_id = excluded.department_id,
+                    raw_record = excluded.raw_record
                 """,
-                (employee.device_user_id, employee.name, employee.department_id),
+                (
+                    employee.device_user_id,
+                    employee.name,
+                    employee.department_id,
+                    employee.raw_record,
+                ),
+            )
+            conn.commit()
+
+    def delete_employee(self, device_user_id: str) -> None:
+        with self._connection() as conn:
+            conn.execute(
+                "DELETE FROM employees WHERE device_user_id = ?",
+                (device_user_id,),
+            )
+            conn.commit()
+
+    def delete_department(self, department_id: int) -> None:
+        with self._connection() as conn:
+            conn.execute(
+                "DELETE FROM departments WHERE department_id = ?",
+                (department_id,),
             )
             conn.commit()
 
@@ -83,29 +122,54 @@ class AttendanceRegistry:
             count += 1
         return count
 
+    def _row_to_employee(self, row: sqlite3.Row) -> Employee:
+        return Employee(
+            device_user_id=row["device_user_id"],
+            name=row["name"],
+            department_id=row["department_id"],
+            raw_record=row["raw_record"],
+        )
+
+    def _row_to_department(self, row: sqlite3.Row) -> Department:
+        return Department(
+            department_id=row["department_id"],
+            name=row["name"],
+            raw_record=row["raw_record"],
+        )
+
     def get_employee(self, device_user_id: str) -> Optional[Employee]:
         with self._connection() as conn:
             row = conn.execute(
-                "SELECT device_user_id, name, department_id FROM employees WHERE device_user_id = ?",
+                "SELECT device_user_id, name, department_id, raw_record FROM employees WHERE device_user_id = ?",
                 (device_user_id,),
             ).fetchone()
         if row:
-            return Employee(
-                device_user_id=row["device_user_id"],
-                name=row["name"],
-                department_id=row["department_id"],
-            )
+            return self._row_to_employee(row)
         return None
 
     def get_department(self, department_id: int) -> Optional[Department]:
         with self._connection() as conn:
             row = conn.execute(
-                "SELECT department_id, name FROM departments WHERE department_id = ?",
+                "SELECT department_id, name, raw_record FROM departments WHERE department_id = ?",
                 (department_id,),
             ).fetchone()
         if row:
-            return Department(department_id=row["department_id"], name=row["name"])
+            return self._row_to_department(row)
         return None
+
+    def all_employees(self) -> list[Employee]:
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT device_user_id, name, department_id, raw_record FROM employees ORDER BY device_user_id"
+            ).fetchall()
+        return [self._row_to_employee(row) for row in rows]
+
+    def all_departments(self) -> list[Department]:
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT department_id, name, raw_record FROM departments ORDER BY department_id"
+            ).fetchall()
+        return [self._row_to_department(row) for row in rows]
 
     def employee_name(self, device_user_id: str) -> Optional[str]:
         emp = self.get_employee(device_user_id)

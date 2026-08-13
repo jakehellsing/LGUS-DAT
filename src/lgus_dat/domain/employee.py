@@ -13,3 +13,4 @@ class Employee:
     device_user_id: str
     name: str
     department_id: Optional[int] = None
+    raw_record: Optional[bytes] = None
