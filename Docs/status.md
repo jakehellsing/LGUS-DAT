@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.4.0`
+`v0.6.0`
 
 ### Status
 
-Device master file importers and SQLite employee registry added. The UI can now import `user.dat` and `department.dat`, resolve employee names from numeric IDs, and export names in the CSV.
+Date-range filtering and device-format export support added. The UI can import, edit, and export `user.dat`/`department.dat`, filter by date, and export processed records as an NGteco/ZKTeco-style `attlog.dat`.
 
 ### Implemented
 
@@ -26,6 +26,8 @@ Device master file importers and SQLite employee registry added. The UI can now 
 - [x] SQLite employee/department registry (`src/lgus_dat/persistence/registry.py`)
 - [x] UI/CSV name resolution from registry
 - [x] Employee/department management editor and binary `user.dat`/`department.dat` exporters
+- [x] Date range filter for input preview and processed output
+- [x] Processed `attlog.dat` exporter and UI button
 
 ### In Progress
 
@@ -42,5 +44,7 @@ Device master file importers and SQLite employee registry added. The UI can now 
 | v0.2.0 | 2026-08-12 | Desktop tkinter UI for open/process/save workflow. |
 | v0.3.0 | 2026-08-12 | `user.dat`/`department.dat` importers and SQLite employee registry. |
 | v0.4.0 | 2026-08-12 | Employee/department management editor and binary device-format exporters. |
+| v0.5.0 | 2026-08-12 | Date range selector to filter preview and processed output. |
+| v0.6.0 | 2026-08-12 | Processed `attlog.dat` exporter in NGteco/ZKTeco tab-delimited format. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

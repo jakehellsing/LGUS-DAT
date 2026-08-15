@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import tkinter as tk
+from datetime import date, datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Optional
@@ -11,10 +12,12 @@ from typing import Optional
 from lgus_dat.domain.attendance_record import AttendanceRecord
 from lgus_dat.importers.department_parser import parse_department_dat
 from lgus_dat.importers.user_parser import parse_user_dat
+from lgus_dat.output.attlog_writer import write_attlog
 from lgus_dat.output.csv_writer import write_csv
-from lgus_dat.parser.dat_parser import parse_dat_file
+from lgus_dat.parser.dat_parser import ParsedRecord, parse_dat_file
 from lgus_dat.persistence.registry import AttendanceRegistry
 from lgus_dat.processing.sequence_processor import process_records
+from lgus_dat.ui.date_filter import filter_by_date
 from lgus_dat.ui.management_dialog import ManagementDialog
 
 
@@ -26,8 +29,11 @@ class ProcessorApp:
         self.root.minsize(900, 600)
 
         self.current_input_path: Optional[Path] = None
-        self.parsed_records: list = []
+        self.parsed_records: list[ParsedRecord] = []
+        self.all_processed_records: list[AttendanceRecord] = []
         self.processed_records: list[AttendanceRecord] = []
+        self._filter_start: Optional[date] = None
+        self._filter_end: Optional[date] = None
         self.registry = AttendanceRegistry()
 
         self._build_ui()
@@ -44,6 +50,7 @@ class ProcessorApp:
         ttk.Button(toolbar, text="Open .DAT", command=self._open_file).pack(side=tk.LEFT, padx=(0, 4))
         ttk.Button(toolbar, text="Process (F5)", command=self._process).pack(side=tk.LEFT, padx=4)
         ttk.Button(toolbar, text="Save CSV", command=self._save_csv).pack(side=tk.LEFT, padx=4)
+        ttk.Button(toolbar, text="Export attlog.dat", command=self._export_attlog).pack(side=tk.LEFT, padx=4)
 
         self.root.bind("<F5>", lambda _event: self._process())
 
@@ -53,6 +60,21 @@ class ProcessorApp:
         ttk.Button(registry_toolbar, text="Import user.dat", command=self._import_user_dat).pack(side=tk.LEFT, padx=(0, 4))
         ttk.Button(registry_toolbar, text="Import department.dat", command=self._import_department_dat).pack(side=tk.LEFT, padx=4)
         ttk.Button(registry_toolbar, text="Manage Employees", command=self._open_management).pack(side=tk.LEFT, padx=4)
+
+        # Date range filter toolbar
+        filter_toolbar = ttk.LabelFrame(self.root, text="Date Range Filter", padding=8)
+        filter_toolbar.pack(fill=tk.X, padx=8, pady=(0, 4))
+
+        ttk.Label(filter_toolbar, text="Start:").pack(side=tk.LEFT)
+        self.start_date_var = tk.StringVar()
+        ttk.Entry(filter_toolbar, textvariable=self.start_date_var, width=12).pack(side=tk.LEFT, padx=(4, 8))
+
+        ttk.Label(filter_toolbar, text="End:").pack(side=tk.LEFT)
+        self.end_date_var = tk.StringVar()
+        ttk.Entry(filter_toolbar, textvariable=self.end_date_var, width=12).pack(side=tk.LEFT, padx=(4, 8))
+
+        ttk.Button(filter_toolbar, text="Apply Filter", command=self._apply_date_filter).pack(side=tk.LEFT, padx=4)
+        ttk.Button(filter_toolbar, text="Clear", command=self._clear_date_filter).pack(side=tk.LEFT, padx=4)
 
         # File path label
         self.path_label = ttk.Label(self.root, text="No file selected", padding=8)
@@ -113,26 +135,46 @@ class ProcessorApp:
             count = conn.execute("SELECT COUNT(*) FROM employees").fetchone()[0]
         self.registry_label.config(text=f"Registry: {self.registry.db_path} — {count} employees")
 
-    def _open_file(self) -> None:
-        path = filedialog.askopenfilename(
-            title="Select MB10-VL .DAT export",
-            filetypes=[("DAT files", "*.dat"), ("All files", "*.*")],
+    def _parse_date_var(self, var: tk.StringVar) -> Optional[date]:
+        text = var.get().strip()
+        if not text:
+            return None
+        try:
+            return date.fromisoformat(text)
+        except ValueError:
+            messagebox.showwarning("Invalid date", f"'{text}' is not a valid YYYY-MM-DD date.")
+            return None
+
+    def _refresh_filter_dates(self) -> bool:
+        start = self._parse_date_var(self.start_date_var)
+        if start is None and self.start_date_var.get().strip():
+            return False
+        end = self._parse_date_var(self.end_date_var)
+        if end is None and self.end_date_var.get().strip():
+            return False
+        self._filter_start, self._filter_end = start, end
+        return True
+
+    def _filtered_parsed_records(self) -> list[ParsedRecord]:
+        return filter_by_date(
+            self.parsed_records,
+            lambda rec: rec.timestamp.date(),
+            self._filter_start,
+            self._filter_end,
         )
-        if path:
-            self._load_file(Path(path))
 
-    def _load_file(self, path: Path) -> None:
-        self.current_input_path = path
-        self.path_label.config(text=str(self.current_input_path))
+    def _filtered_processed_records(self) -> list[AttendanceRecord]:
+        return filter_by_date(
+            self.all_processed_records,
+            lambda rec: rec.punch_date,
+            self._filter_start,
+            self._filter_end,
+        )
+
+    def _refresh_input_tree(self) -> int:
         self._clear(self.input_tree)
-        self._clear(self.output_tree)
-        self.processed_records = []
-        self._log(f"Opened {self.current_input_path}")
-
-        records, errors = parse_dat_file(self.current_input_path)
-        self.parsed_records = records
-
-        for rec in records:
+        displayed = 0
+        for rec in self._filtered_parsed_records():
             name = self.registry.employee_name(rec.employee_id) or ""
             self.input_tree.insert(
                 "",
@@ -144,25 +186,12 @@ class ProcessorApp:
                     rec.original_line,
                 ),
             )
+            displayed += 1
+        return displayed
 
-        if errors:
-            self._log(f"Found {len(errors)} parse error(s):")
-            for err in errors:
-                self._log(str(err))
-        else:
-            self._log(f"Parsed {len(records)} record(s) successfully.")
-
-    def _process(self) -> None:
-        if not self.parsed_records:
-            messagebox.showwarning("No data", "Open a .DAT file first.")
-            return
-
+    def _refresh_output_tree(self) -> int:
         self._clear(self.output_tree)
-        self.processed_records = process_records(
-            self.parsed_records,
-            name_lookup=self.registry.employee_name,
-        )
-
+        self.processed_records = self._filtered_processed_records()
         for rec in self.processed_records:
             self.output_tree.insert(
                 "",
@@ -177,12 +206,67 @@ class ProcessorApp:
                     rec.exception_flag or "",
                 ),
             )
+        return len(self.processed_records)
 
-        self._log(f"Processed {len(self.processed_records)} record(s).")
+    def _apply_date_filter(self) -> None:
+        if not self._refresh_filter_dates():
+            return
+        displayed_input = self._refresh_input_tree()
+        displayed_output = self._refresh_output_tree()
+        self._log(f"Filter applied: {displayed_input} input row(s), {displayed_output} output row(s).")
+
+    def _clear_date_filter(self) -> None:
+        self.start_date_var.set("")
+        self.end_date_var.set("")
+        self._filter_start = None
+        self._filter_end = None
+        self._apply_date_filter()
+
+    def _open_file(self) -> None:
+        path = filedialog.askopenfilename(
+            title="Select MB10-VL .DAT export",
+            filetypes=[("DAT files", "*.dat"), ("All files", "*.*")],
+        )
+        if path:
+            self._load_file(Path(path))
+
+    def _load_file(self, path: Path) -> None:
+        self.current_input_path = path
+        self.path_label.config(text=str(self.current_input_path))
+        self._clear(self.input_tree)
+        self._clear(self.output_tree)
+        self.all_processed_records = []
+        self.processed_records = []
+        self._log(f"Opened {self.current_input_path}")
+
+        records, errors = parse_dat_file(self.current_input_path)
+        self.parsed_records = records
+
+        displayed = self._refresh_input_tree()
+
+        if errors:
+            self._log(f"Found {len(errors)} parse error(s):")
+            for err in errors:
+                self._log(str(err))
+        else:
+            self._log(f"Parsed {len(records)} record(s) successfully. {displayed} shown with current filter.")
+
+    def _process(self) -> None:
+        if not self.parsed_records:
+            messagebox.showwarning("No data", "Open a .DAT file first.")
+            return
+
+        self.all_processed_records = process_records(
+            self.parsed_records,
+            name_lookup=self.registry.employee_name,
+        )
+
+        displayed = self._refresh_output_tree()
+        self._log(f"Processed {len(self.all_processed_records)} record(s). {displayed} shown with current filter.")
 
     def _save_csv(self) -> None:
         if not self.processed_records:
-            messagebox.showwarning("No output", "Process a file first.")
+            messagebox.showwarning("No output", "Process a file first or adjust the date filter.")
             return
 
         path = filedialog.asksaveasfilename(
@@ -193,7 +277,22 @@ class ProcessorApp:
             return
 
         write_csv(self.processed_records, Path(path))
-        self._log(f"Saved CSV to {path}")
+        self._log(f"Saved {len(self.processed_records)} filtered row(s) to {path}")
+
+    def _export_attlog(self) -> None:
+        if not self.processed_records:
+            messagebox.showwarning("No output", "Process a file first or adjust the date filter.")
+            return
+
+        path = filedialog.asksaveasfilename(
+            defaultextension=".dat",
+            filetypes=[("DAT files", "*.dat"), ("All files", "*.*")],
+        )
+        if not path:
+            return
+
+        write_attlog(self.processed_records, Path(path))
+        self._log(f"Exported {len(self.processed_records)} row(s) to {path}")
 
     def _open_management(self) -> None:
         ManagementDialog(self.root, self.registry, on_change=self._update_registry_label)

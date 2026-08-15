@@ -31,9 +31,9 @@ env/
 .idea/
 *.swp
 
-# Project output
-output/
-archive/
+# Project output (root-level only)
+/output/
+/archive/
 *.csv
 *.dat
 *.db
