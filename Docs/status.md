@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.7.0`
+`v0.8.0`
 
 ### Status
 
-Standalone executable build pipeline added. The app can be packaged as a single-file Windows `.exe` or Linux binary via PyInstaller and GitHub Actions.
+Employee search filter added. The UI can now search input preview and processed output by employee ID or name, in addition to the date range filter.
 
 ### Implemented
 
@@ -29,6 +29,7 @@ Standalone executable build pipeline added. The app can be packaged as a single-
 - [x] Date range filter for input preview and processed output
 - [x] Processed `attlog.dat` exporter and UI button
 - [x] Standalone executable build pipeline (PyInstaller + GitHub Actions)
+- [x] Employee search filter for input preview and processed output by ID or name
 
 ### In Progress
 
@@ -47,5 +48,6 @@ Standalone executable build pipeline added. The app can be packaged as a single-
 | v0.5.0 | 2026-08-12 | Date range selector to filter preview and processed output. |
 | v0.6.0 | 2026-08-12 | Processed `attlog.dat` exporter in NGteco/ZKTeco tab-delimited format. |
 | v0.7.0 | 2026-08-12 | PyInstaller/GitHub Actions build pipeline for Windows `.exe` and Linux binary. |
+| v0.8.0 | 2026-08-12 | Employee search filter for input preview and processed output by ID or name. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

@@ -19,6 +19,7 @@ from lgus_dat.persistence.registry import AttendanceRegistry
 from lgus_dat.processing.sequence_processor import process_records
 from lgus_dat.ui.date_filter import filter_by_date
 from lgus_dat.ui.management_dialog import ManagementDialog
+from lgus_dat.ui.search_filter import filter_by_search
 
 
 class ProcessorApp:
@@ -34,6 +35,7 @@ class ProcessorApp:
         self.processed_records: list[AttendanceRecord] = []
         self._filter_start: Optional[date] = None
         self._filter_end: Optional[date] = None
+        self._search_query: str = ""
         self.registry = AttendanceRegistry()
 
         self._build_ui()
@@ -75,6 +77,16 @@ class ProcessorApp:
 
         ttk.Button(filter_toolbar, text="Apply Filter", command=self._apply_date_filter).pack(side=tk.LEFT, padx=4)
         ttk.Button(filter_toolbar, text="Clear", command=self._clear_date_filter).pack(side=tk.LEFT, padx=4)
+
+        # Search filter toolbar
+        search_toolbar = ttk.LabelFrame(self.root, text="Search Filter", padding=8)
+        search_toolbar.pack(fill=tk.X, padx=8, pady=(0, 4))
+
+        ttk.Label(search_toolbar, text="Search employee:").pack(side=tk.LEFT)
+        self.search_var = tk.StringVar()
+        ttk.Entry(search_toolbar, textvariable=self.search_var, width=24).pack(side=tk.LEFT, padx=(4, 8))
+        ttk.Button(search_toolbar, text="Search", command=self._apply_search_filter).pack(side=tk.LEFT, padx=4)
+        ttk.Button(search_toolbar, text="Clear", command=self._clear_search_filter).pack(side=tk.LEFT, padx=4)
 
         # File path label
         self.path_label = ttk.Label(self.root, text="No file selected", padding=8)
@@ -156,19 +168,35 @@ class ProcessorApp:
         return True
 
     def _filtered_parsed_records(self) -> list[ParsedRecord]:
-        return filter_by_date(
+        records = filter_by_date(
             self.parsed_records,
             lambda rec: rec.timestamp.date(),
             self._filter_start,
             self._filter_end,
         )
+        return filter_by_search(
+            records,
+            self._search_query,
+            [
+                lambda rec: rec.employee_id,
+                lambda rec: self.registry.employee_name(rec.employee_id) or "",
+            ],
+        )
 
     def _filtered_processed_records(self) -> list[AttendanceRecord]:
-        return filter_by_date(
+        records = filter_by_date(
             self.all_processed_records,
             lambda rec: rec.punch_date,
             self._filter_start,
             self._filter_end,
+        )
+        return filter_by_search(
+            records,
+            self._search_query,
+            [
+                lambda rec: rec.employee_id,
+                lambda rec: rec.employee_name or "",
+            ],
         )
 
     def _refresh_input_tree(self) -> int:
@@ -221,6 +249,20 @@ class ProcessorApp:
         self._filter_start = None
         self._filter_end = None
         self._apply_date_filter()
+
+    def _apply_search_filter(self) -> None:
+        self._search_query = self.search_var.get()
+        displayed_input = self._refresh_input_tree()
+        displayed_output = self._refresh_output_tree()
+        self._log(
+            f"Search applied for '{self._search_query}': "
+            f"{displayed_input} input row(s), {displayed_output} output row(s)."
+        )
+
+    def _clear_search_filter(self) -> None:
+        self.search_var.set("")
+        self._search_query = ""
+        self._apply_search_filter()
 
     def _open_file(self) -> None:
         path = filedialog.askopenfilename(
