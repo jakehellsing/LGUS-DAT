@@ -10,6 +10,8 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Optional
 
+from tkcalendar import DateEntry
+
 from lgus_dat.domain.attendance_record import AttendanceRecord, PunchStatus
 from lgus_dat.importers.department_parser import parse_department_dat
 from lgus_dat.importers.user_parser import parse_user_dat
@@ -72,11 +74,25 @@ class ProcessorApp:
 
         ttk.Label(filter_toolbar, text="Start:").pack(side=tk.LEFT)
         self.start_date_var = tk.StringVar()
-        ttk.Entry(filter_toolbar, textvariable=self.start_date_var, width=12).pack(side=tk.LEFT, padx=(4, 8))
+        self.start_date_entry = DateEntry(
+            filter_toolbar,
+            textvariable=self.start_date_var,
+            width=12,
+            date_pattern="y-mm-dd",
+        )
+        self.start_date_entry.delete(0, tk.END)
+        self.start_date_entry.pack(side=tk.LEFT, padx=(4, 8))
 
         ttk.Label(filter_toolbar, text="End:").pack(side=tk.LEFT)
         self.end_date_var = tk.StringVar()
-        ttk.Entry(filter_toolbar, textvariable=self.end_date_var, width=12).pack(side=tk.LEFT, padx=(4, 8))
+        self.end_date_entry = DateEntry(
+            filter_toolbar,
+            textvariable=self.end_date_var,
+            width=12,
+            date_pattern="y-mm-dd",
+        )
+        self.end_date_entry.delete(0, tk.END)
+        self.end_date_entry.pack(side=tk.LEFT, padx=(4, 8))
 
         ttk.Button(filter_toolbar, text="Apply Filter", command=self._apply_date_filter).pack(side=tk.LEFT, padx=4)
         ttk.Button(filter_toolbar, text="Clear", command=self._clear_date_filter).pack(side=tk.LEFT, padx=4)

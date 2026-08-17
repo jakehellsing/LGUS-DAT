@@ -1,5 +1,5 @@
 # Runtime dependencies
-# (none required for the base processor)
+tkcalendar>=1.6
 
 # Development dependencies
 pytest>=7.0

@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.9.0`
+`v0.10.0`
 
 ### Status
 
-Manual status editing added. Processed output rows can now be corrected to IN or OUT and are flagged as MANUAL_EDIT for audit.
+Date picker added to the date range filter. Start and end dates can be selected from a dropdown calendar instead of typed.
 
 ### Implemented
 
@@ -31,6 +31,7 @@ Manual status editing added. Processed output rows can now be corrected to IN or
 - [x] Standalone executable build pipeline (PyInstaller + GitHub Actions)
 - [x] Employee search filter for input preview and processed output by ID or name
 - [x] Manual IN/OUT status editing with `MANUAL_EDIT` flag for corrections
+- [x] Calendar date picker for date range filter (using `tkcalendar` DateEntry)
 
 ### In Progress
 
@@ -51,5 +52,6 @@ Manual status editing added. Processed output rows can now be corrected to IN or
 | v0.7.0 | 2026-08-12 | PyInstaller/GitHub Actions build pipeline for Windows `.exe` and Linux binary. |
 | v0.8.0 | 2026-08-12 | Employee search filter for input preview and processed output by ID or name. |
 | v0.9.0 | 2026-08-12 | Manual IN/OUT status editing with `MANUAL_EDIT` flag for corrections. |
+| v0.10.0 | 2026-08-12 | Calendar date picker (`tkcalendar` DateEntry) for date range filter. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
