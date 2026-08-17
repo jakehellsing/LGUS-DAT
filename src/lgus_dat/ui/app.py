@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import sys
 import tkinter as tk
+from dataclasses import replace
 from datetime import date, datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Optional
 
-from lgus_dat.domain.attendance_record import AttendanceRecord
+from lgus_dat.domain.attendance_record import AttendanceRecord, PunchStatus
 from lgus_dat.importers.department_parser import parse_department_dat
 from lgus_dat.importers.user_parser import parse_user_dat
 from lgus_dat.output.attlog_writer import write_attlog
@@ -36,6 +37,7 @@ class ProcessorApp:
         self._filter_start: Optional[date] = None
         self._filter_end: Optional[date] = None
         self._search_query: str = ""
+        self._output_tree_records: dict[str, AttendanceRecord] = {}
         self.registry = AttendanceRegistry()
 
         self._build_ui()
@@ -53,6 +55,7 @@ class ProcessorApp:
         ttk.Button(toolbar, text="Process (F5)", command=self._process).pack(side=tk.LEFT, padx=4)
         ttk.Button(toolbar, text="Save CSV", command=self._save_csv).pack(side=tk.LEFT, padx=4)
         ttk.Button(toolbar, text="Export attlog.dat", command=self._export_attlog).pack(side=tk.LEFT, padx=4)
+        ttk.Button(toolbar, text="Edit Status", command=self._edit_selected_status).pack(side=tk.LEFT, padx=4)
 
         self.root.bind("<F5>", lambda _event: self._process())
 
@@ -219,9 +222,10 @@ class ProcessorApp:
 
     def _refresh_output_tree(self) -> int:
         self._clear(self.output_tree)
+        self._output_tree_records.clear()
         self.processed_records = self._filtered_processed_records()
         for rec in self.processed_records:
-            self.output_tree.insert(
+            item = self.output_tree.insert(
                 "",
                 tk.END,
                 values=(
@@ -234,6 +238,7 @@ class ProcessorApp:
                     rec.exception_flag or "",
                 ),
             )
+            self._output_tree_records[item] = rec
         return len(self.processed_records)
 
     def _apply_date_filter(self) -> None:
@@ -305,6 +310,74 @@ class ProcessorApp:
 
         displayed = self._refresh_output_tree()
         self._log(f"Processed {len(self.all_processed_records)} record(s). {displayed} shown with current filter.")
+
+    def _edit_status_dialog(self, current: PunchStatus) -> Optional[PunchStatus]:
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Edit Status")
+        dialog.geometry("250x120")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        ttk.Label(dialog, text="Select status:").pack(pady=(12, 4))
+        status_var = tk.StringVar(value=current.value)
+        combo = ttk.Combobox(
+            dialog,
+            textvariable=status_var,
+            values=[PunchStatus.IN.value, PunchStatus.OUT.value],
+            state="readonly",
+        )
+        combo.pack(pady=4)
+
+        result: Optional[PunchStatus] = None
+
+        def ok() -> None:
+            nonlocal result
+            try:
+                result = PunchStatus(status_var.get())
+            except ValueError:
+                result = None
+            dialog.destroy()
+
+        def cancel() -> None:
+            dialog.destroy()
+
+        button_frame = ttk.Frame(dialog, padding=8)
+        button_frame.pack()
+        ttk.Button(button_frame, text="OK", command=ok).pack(side=tk.LEFT, padx=4)
+        ttk.Button(button_frame, text="Cancel", command=cancel).pack(side=tk.LEFT, padx=4)
+
+        self.root.wait_window(dialog)
+        return result
+
+    def _edit_selected_status(self) -> None:
+        selected = self.output_tree.selection()
+        if not selected:
+            messagebox.showwarning("No selection", "Select a processed output row to edit its status.")
+            return
+
+        item = selected[0]
+        record = self._output_tree_records.get(item)
+        if record is None:
+            return
+
+        new_status = self._edit_status_dialog(record.status)
+        if new_status is None or new_status == record.status:
+            return
+
+        edited = replace(record, status=new_status, exception_flag="MANUAL_EDIT")
+        try:
+            index = self.all_processed_records.index(record)
+            self.all_processed_records[index] = edited
+        except ValueError:
+            self._log(f"Could not update {record.employee_id} — original row not found.")
+            return
+
+        self._refresh_output_tree()
+        self._log(
+            f"Manual edit: {record.employee_id} at "
+            f"{record.timestamp.strftime('%Y-%m-%d %H:%M:%S')} changed from "
+            f"{record.status.value} to {edited.status.value}"
+        )
 
     def _save_csv(self) -> None:
         if not self.processed_records:

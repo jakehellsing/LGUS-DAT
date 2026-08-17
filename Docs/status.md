@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.8.0`
+`v0.9.0`
 
 ### Status
 
-Employee search filter added. The UI can now search input preview and processed output by employee ID or name, in addition to the date range filter.
+Manual status editing added. Processed output rows can now be corrected to IN or OUT and are flagged as MANUAL_EDIT for audit.
 
 ### Implemented
 
@@ -30,6 +30,7 @@ Employee search filter added. The UI can now search input preview and processed 
 - [x] Processed `attlog.dat` exporter and UI button
 - [x] Standalone executable build pipeline (PyInstaller + GitHub Actions)
 - [x] Employee search filter for input preview and processed output by ID or name
+- [x] Manual IN/OUT status editing with `MANUAL_EDIT` flag for corrections
 
 ### In Progress
 
@@ -49,5 +50,6 @@ Employee search filter added. The UI can now search input preview and processed 
 | v0.6.0 | 2026-08-12 | Processed `attlog.dat` exporter in NGteco/ZKTeco tab-delimited format. |
 | v0.7.0 | 2026-08-12 | PyInstaller/GitHub Actions build pipeline for Windows `.exe` and Linux binary. |
 | v0.8.0 | 2026-08-12 | Employee search filter for input preview and processed output by ID or name. |
+| v0.9.0 | 2026-08-12 | Manual IN/OUT status editing with `MANUAL_EDIT` flag for corrections. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
