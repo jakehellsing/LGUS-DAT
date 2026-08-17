@@ -70,8 +70,7 @@ Pre-built Windows and Linux executables are produced by GitHub Actions for every
 To build locally with PyInstaller:
 
 ```bash
-pip install -e .
-pip install pyinstaller
+pip install -e ".[build]"
 pyinstaller --onefile --windowed --name LGUS-DAT scripts/gui_entry.py
 ```
 
