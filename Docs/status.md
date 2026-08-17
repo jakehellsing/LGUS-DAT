@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.6.0`
+`v0.7.0`
 
 ### Status
 
-Date-range filtering and device-format export support added. The UI can import, edit, and export `user.dat`/`department.dat`, filter by date, and export processed records as an NGteco/ZKTeco-style `attlog.dat`.
+Standalone executable build pipeline added. The app can be packaged as a single-file Windows `.exe` or Linux binary via PyInstaller and GitHub Actions.
 
 ### Implemented
 
@@ -28,12 +28,12 @@ Date-range filtering and device-format export support added. The UI can import, 
 - [x] Employee/department management editor and binary `user.dat`/`department.dat` exporters
 - [x] Date range filter for input preview and processed output
 - [x] Processed `attlog.dat` exporter and UI button
+- [x] Standalone executable build pipeline (PyInstaller + GitHub Actions)
 
 ### In Progress
 
 - [ ] End-to-end processing of real MB10-VL exports
 - [ ] Duplicate detection and exception reporting
-- [ ] Desktop/offline distribution packaging
 
 ### Version History
 
@@ -46,5 +46,6 @@ Date-range filtering and device-format export support added. The UI can import, 
 | v0.4.0 | 2026-08-12 | Employee/department management editor and binary device-format exporters. |
 | v0.5.0 | 2026-08-12 | Date range selector to filter preview and processed output. |
 | v0.6.0 | 2026-08-12 | Processed `attlog.dat` exporter in NGteco/ZKTeco tab-delimited format. |
+| v0.7.0 | 2026-08-12 | PyInstaller/GitHub Actions build pipeline for Windows `.exe` and Linux binary. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

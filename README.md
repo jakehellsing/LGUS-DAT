@@ -62,3 +62,17 @@ lgus-dat-gui
 The UI lets you open a `.dat` file, preview the raw records, process them into IN/OUT rows, and save the resulting CSV.
 
 You can also import the device's `user.dat` to resolve employee names from numeric IDs and `department.dat` to build a department registry. Use **Manage Employees** to view, add, edit, or delete employees and departments, then export them back to the same ZKTeco/NGteco binary `user.dat` / `department.dat` formats for re-import into the device.
+
+## Standalone Executable
+
+Pre-built Windows and Linux executables are produced by GitHub Actions for every push to `main`. Download the artifact for your platform from the **Build Executables** workflow run, then run `LGUS-DAT.exe` (Windows) or `LGUS-DAT` (Linux) directly — no Python installation is needed on the target PC.
+
+To build locally with PyInstaller:
+
+```bash
+pip install -e .
+pip install pyinstaller
+pyinstaller --onefile --windowed --name LGUS-DAT scripts/gui_entry.py
+```
+
+The output will be in `dist/LGUS-DAT` (Linux) or `dist/LGUS-DAT.exe` (Windows).
