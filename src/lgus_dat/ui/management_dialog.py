@@ -175,10 +175,18 @@ class ManagementDialog:
         emp_frame = ttk.Frame(notebook)
         notebook.add(emp_frame, text="Employees")
 
+        emp_search_frame = ttk.Frame(emp_frame)
+        emp_search_frame.pack(fill=tk.X, pady=4)
+        ttk.Label(emp_search_frame, text="Search:").pack(side=tk.LEFT, padx=(0, 4))
+        self.emp_search_var = tk.StringVar()
+        ttk.Entry(emp_search_frame, textvariable=self.emp_search_var, width=24).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Button(emp_search_frame, text="Filter", command=self._filter_employees).pack(side=tk.LEFT, padx=2)
+        ttk.Button(emp_search_frame, text="Clear", command=self._clear_employee_filter).pack(side=tk.LEFT, padx=2)
+
         emp_cols = ("Device User ID", "Name", "Department ID")
         self.emp_tree = ttk.Treeview(emp_frame, columns=emp_cols, show="headings")
         for col in emp_cols:
-            self.emp_tree.heading(col, text=col)
+            self.emp_tree.heading(col, text=col, command=lambda _col=col: self._sort_tree(self.emp_tree, _col))
             self.emp_tree.column(col, anchor="w")
         self.emp_tree.pack(fill=tk.BOTH, expand=True)
 
@@ -188,6 +196,8 @@ class ManagementDialog:
         ttk.Button(emp_btn_frame, text="Edit", command=self._edit_employee).pack(side=tk.LEFT, padx=2)
         ttk.Button(emp_btn_frame, text="Delete", command=self._delete_employee).pack(side=tk.LEFT, padx=2)
 
+        self._employee_filter_query = ""
+
         # Departments tab
         dept_frame = ttk.Frame(notebook)
         notebook.add(dept_frame, text="Departments")
@@ -195,7 +205,7 @@ class ManagementDialog:
         dept_cols = ("Department ID", "Name")
         self.dept_tree = ttk.Treeview(dept_frame, columns=dept_cols, show="headings")
         for col in dept_cols:
-            self.dept_tree.heading(col, text=col)
+            self.dept_tree.heading(col, text=col, command=lambda _col=col: self._sort_tree(self.dept_tree, _col))
             self.dept_tree.column(col, anchor="w")
         self.dept_tree.pack(fill=tk.BOTH, expand=True)
 
@@ -217,18 +227,56 @@ class ManagementDialog:
         for item in tree.get_children():
             tree.delete(item)
 
-    def _refresh(self) -> None:
+    def _sort_tree(self, tree: ttk.Treeview, col: str, reverse: bool = False) -> None:
+        def _key(item: str):
+            val = tree.set(item, col)
+            try:
+                return (0, float(val))
+            except ValueError:
+                return (1, val.lower())
+
+        items = sorted(tree.get_children(""), key=_key, reverse=reverse)
+        for index, item in enumerate(items):
+            tree.move(item, "", index)
+        tree.heading(col, command=lambda _col=col: self._sort_tree(tree, _col, not reverse))
+
+    def _matches_employee_query(self, emp: Employee) -> bool:
+        if not self._employee_filter_query:
+            return True
+        q = self._employee_filter_query.lower()
+        return (
+            q in emp.device_user_id.lower()
+            or q in emp.name.lower()
+            or (emp.department_id is not None and q in str(emp.department_id).lower())
+        )
+
+    def _filter_employees(self) -> None:
+        self._employee_filter_query = self.emp_search_var.get()
+        self._refresh_employees()
+
+    def _clear_employee_filter(self) -> None:
+        self.emp_search_var.set("")
+        self._employee_filter_query = ""
+        self._refresh_employees()
+
+    def _refresh_employees(self) -> None:
         self._clear(self.emp_tree)
         for emp in self.registry.all_employees():
-            self.emp_tree.insert(
-                "",
-                tk.END,
-                values=(emp.device_user_id, emp.name, emp.department_id or ""),
-            )
+            if self._matches_employee_query(emp):
+                self.emp_tree.insert(
+                    "",
+                    tk.END,
+                    values=(emp.device_user_id, emp.name, emp.department_id or ""),
+                )
 
+    def _refresh_departments(self) -> None:
         self._clear(self.dept_tree)
         for dept in self.registry.all_departments():
             self.dept_tree.insert("", tk.END, values=(dept.department_id, dept.name))
+
+    def _refresh(self) -> None:
+        self._refresh_employees()
+        self._refresh_departments()
 
     def _add_employee(self) -> None:
         dialog = _EmployeeDialog(self.window, self.registry)

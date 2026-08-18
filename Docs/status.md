@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.11.0`
+`v0.12.0`
 
 ### Status
 
-Imported attendance logs are now persisted to the local SQLite DB. A `Process from DB` button combines logs from multiple devices/sources into a single centralized log store.
+The Manage Employees window now has a search filter and clickable column sorting to quickly find and organize employees.
 
 ### Implemented
 
@@ -34,6 +34,7 @@ Imported attendance logs are now persisted to the local SQLite DB. A `Process fr
 - [x] Calendar date picker for date range filter (using `tkcalendar` DateEntry)
 - [x] Local SQLite persistence of imported attendance logs with multi-device/source support
 - [x] `Process from DB` to process all centralized stored logs
+- [x] Search filter and column sorting in the employee/department management window
 
 ### In Progress
 
@@ -56,5 +57,6 @@ Imported attendance logs are now persisted to the local SQLite DB. A `Process fr
 | v0.9.0 | 2026-08-12 | Manual IN/OUT status editing with `MANUAL_EDIT` flag for corrections. |
 | v0.10.0 | 2026-08-12 | Calendar date picker (`tkcalendar` DateEntry) for date range filter. |
 | v0.11.0 | 2026-08-12 | Local SQLite persistence of imported logs and `Process from DB` for centralized multi-device logs. |
+| v0.12.0 | 2026-08-12 | Search filter and clickable column sorting in employee/department management. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
