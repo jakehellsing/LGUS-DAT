@@ -39,4 +39,12 @@ def test_write_attlog_defaults_missing_fields(tmp_path: Path) -> None:
     output = tmp_path / "out.dat"
     write_attlog([record], output)
     lines = [line for line in output.read_text(encoding="utf-8").splitlines() if line]
-    assert lines[0] == "             5\t2026-08-12 08:00:00\t1\t0\t0\t0"
+    assert lines[0] == "5\t2026-08-12 08:00:00\t1\t0\t0\t0"
+
+
+def test_write_attlog_preserves_original_id_padding(tmp_path: Path) -> None:
+    record = _make_record("44", PunchStatus.OUT, "       44 2026-08-12 20:28:44 1 0 1 0")
+    output = tmp_path / "out.dat"
+    write_attlog([record], output)
+    lines = [line for line in output.read_text(encoding="utf-8").splitlines() if line]
+    assert lines[0] == "       44\t2026-08-12 08:00:00\t1\t1\t1\t0"

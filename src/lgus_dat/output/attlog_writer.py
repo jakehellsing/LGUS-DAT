@@ -1,12 +1,12 @@
 """Writer for processed attendance data in NGteco/ZKTeco `attlog.dat` format.
 
-The device/text export uses fixed-width fields, tab separators and CRLF line
-endings:
+The device/text export uses the same ID field formatting as the source file,
+with tab separators and CRLF line endings:
 
-    <employee id right-padded to 14 chars>\t<YYYY-MM-DD HH:MM:SS>\t<verify>\t<status>\t<workcode>\t<reserved>\r\n
+    <employee id field as in source>\t<YYYY-MM-DD HH:MM:SS>\t<verify>\t<status>\t<workcode>\t<reserved>\r\n
 
-The writer preserves the original extra device fields and updates the status
-column to reflect the computed IN/OUT state:
+The writer preserves the original ID padding/width, the original extra device
+fields, and updates the status column to reflect the computed IN/OUT state:
 
     IN  -> 0
     OUT -> 1
@@ -14,9 +14,24 @@ column to reflect the computed IN/OUT state:
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from lgus_dat.domain.attendance_record import AttendanceRecord, PunchStatus
+
+
+def _format_id_field(original_record: str, employee_id: str) -> str:
+    """Preserve the original ID padding/width from the source record.
+
+    The source line begins with the employee ID possibly padded with leading
+    spaces. If that prefix is still present, reuse it exactly; otherwise fall
+    back to the bare ID.
+    """
+    pattern = r"^\s*" + re.escape(employee_id) + r"(?=\s)"
+    match = re.match(pattern, original_record)
+    if match:
+        return match.group(0)
+    return employee_id
 
 
 def _default_extras(original_record: str) -> tuple[str, str, str, str]:
@@ -47,8 +62,9 @@ def write_attlog(records: list[AttendanceRecord], path: Path) -> None:
         for rec in records:
             verify, status_field, workcode, reserved = _default_extras(rec.original_record)
             status_field = _status_to_field(rec.status, status_field)
+            id_field = _format_id_field(rec.original_record, rec.employee_id)
             line = (
-                f"{rec.employee_id.rjust(14)}\t"
+                f"{id_field}\t"
                 f"{rec.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\t"
                 f"{verify}\t{status_field}\t{workcode}\t{reserved}\r\n"
             )

@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.12.0`
+`v0.12.1`
 
 ### Status
 
-The Manage Employees window now has a search filter and clickable column sorting to quickly find and organize employees.
+The processed `attlog.dat` export now preserves the exact Device ID field formatting (padding/width) from the source file instead of forcing a 14-character right-padded ID.
 
 ### Implemented
 
@@ -58,5 +58,6 @@ The Manage Employees window now has a search filter and clickable column sorting
 | v0.10.0 | 2026-08-12 | Calendar date picker (`tkcalendar` DateEntry) for date range filter. |
 | v0.11.0 | 2026-08-12 | Local SQLite persistence of imported logs and `Process from DB` for centralized multi-device logs. |
 | v0.12.0 | 2026-08-12 | Search filter and clickable column sorting in employee/department management. |
+| v0.12.1 | 2026-08-12 | Processed `attlog.dat` export preserves the original Device ID padding/width from the source file. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
