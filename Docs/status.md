@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.12.2`
+`v0.12.3`
 
 ### Status
 
-Fixed the `user.dat` writer to use the correct ZK8 72-byte record layout: the string user ID/PIN is now at byte 48 (24-byte field), the constant 0x01 is preserved at byte 39, and privilege/card/group fields are read from the original raw record so IDs and names no longer shift.
+Fixed `user.dat` parsing to read the string User ID/PIN at byte 48 instead of the single-byte internal UID, preventing duplicate/wrapped IDs when uids exceed 255. Employee lists and exports now default to numeric sort.
 
 ### Implemented
 
@@ -60,5 +60,6 @@ Fixed the `user.dat` writer to use the correct ZK8 72-byte record layout: the st
 | v0.12.0 | 2026-08-12 | Search filter and clickable column sorting in employee/department management. |
 | v0.12.1 | 2026-08-12 | Processed `attlog.dat` export preserves the original Device ID padding/width from the source file. |
 | v0.12.2 | 2026-08-12 | Fixed `user.dat` binary export layout to match ZKTeco/NGteco ZK8 72-byte record format and prevent ID/name shifting. |
+| v0.12.3 | 2026-08-12 | Read the string User ID/PIN at byte 48 (not the single-byte UID) and default employee list/export to numeric sort. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

@@ -178,9 +178,11 @@ class AttendanceRegistry:
     def all_employees(self) -> list[Employee]:
         with self._connection() as conn:
             rows = conn.execute(
-                "SELECT device_user_id, name, department_id, raw_record FROM employees ORDER BY device_user_id"
+                "SELECT device_user_id, name, department_id, raw_record FROM employees"
             ).fetchall()
-        return [self._row_to_employee(row) for row in rows]
+        employees = [self._row_to_employee(row) for row in rows]
+        employees.sort(key=lambda e: (int(e.device_user_id) if e.device_user_id.isdigit() else float("inf"), e.device_user_id.lower()))
+        return employees
 
     def all_departments(self) -> list[Department]:
         with self._connection() as conn:
