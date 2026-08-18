@@ -1,3 +1,3 @@
 """MB10-VL Sequential IN/OUT .DAT Processor."""
 
-__version__ = "0.12.3"
+__version__ = "0.12.4"

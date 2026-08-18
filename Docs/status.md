@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.12.3`
+`v0.12.4`
 
 ### Status
 
-Fixed `user.dat` parsing to read the string User ID/PIN at byte 48 instead of the single-byte internal UID, preventing duplicate/wrapped IDs when uids exceed 255. Employee lists and exports now default to numeric sort.
+Added a threaded progress bar for `user.dat`, `department.dat`, and `.DAT` imports so the UI stays responsive while files are parsed and stored.
 
 ### Implemented
 
@@ -61,5 +61,6 @@ Fixed `user.dat` parsing to read the string User ID/PIN at byte 48 instead of th
 | v0.12.1 | 2026-08-12 | Processed `attlog.dat` export preserves the original Device ID padding/width from the source file. |
 | v0.12.2 | 2026-08-12 | Fixed `user.dat` binary export layout to match ZKTeco/NGteco ZK8 72-byte record format and prevent ID/name shifting. |
 | v0.12.3 | 2026-08-12 | Read the string User ID/PIN at byte 48 (not the single-byte UID) and default employee list/export to numeric sort. |
+| v0.12.4 | 2026-08-12 | Added a threaded progress bar for `user.dat`, `department.dat`, and `.DAT` imports so the UI stays responsive while files are parsed and stored. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import queue
 import sys
+import threading
 import tkinter as tk
 from dataclasses import replace
 from datetime import date, datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Optional
+from typing import Any, Callable, Optional
 
 from tkcalendar import DateEntry
 
@@ -23,6 +25,34 @@ from lgus_dat.processing.sequence_processor import process_records
 from lgus_dat.ui.date_filter import filter_by_date
 from lgus_dat.ui.management_dialog import ManagementDialog
 from lgus_dat.ui.search_filter import filter_by_search
+
+
+class _ProgressDialog:
+    """Small modal progress window with an indeterminate progress bar."""
+
+    def __init__(self, parent: tk.Tk | tk.Toplevel, title: str = "Working...") -> None:
+        self.window = tk.Toplevel(parent)
+        self.window.title(title)
+        self.window.transient(parent)
+        self.window.resizable(False, False)
+        self.window.grab_set()
+
+        self.label = ttk.Label(self.window, text="Please wait...")
+        self.label.pack(pady=12)
+
+        self.bar = ttk.Progressbar(self.window, mode="indeterminate", length=300)
+        self.bar.pack(padx=20, pady=(0, 12))
+        self.bar.start(15)
+
+        self.window.update()
+
+    def set_text(self, text: str) -> None:
+        self.label.config(text=text)
+        self.window.update()
+
+    def close(self) -> None:
+        self.bar.stop()
+        self.window.destroy()
 
 
 class ProcessorApp:
@@ -47,7 +77,14 @@ class ProcessorApp:
         self._update_logs_label()
 
         if initial_file:
-            self._load_file(initial_file)
+            self.root.after(
+                100,
+                lambda: self._run_with_progress(
+                    "Loading .DAT",
+                    lambda: self._load_file_sync(initial_file),
+                    self._on_load_complete,
+                ),
+            )
 
     def _build_ui(self) -> None:
         # Toolbar
@@ -159,6 +196,39 @@ class ProcessorApp:
 
         self.status_text = tk.Text(status_frame, height=6, wrap=tk.WORD, state=tk.DISABLED)
         self.status_text.pack(fill=tk.BOTH, expand=True)
+
+    def _run_with_progress(
+        self,
+        title: str,
+        target: Callable[[], Any],
+        on_done: Callable[[Any], None],
+    ) -> None:
+        """Run target in a background thread and invoke on_done in the main thread."""
+        dialog = _ProgressDialog(self.root, title)
+        result_queue: queue.Queue[tuple[bool, Any]] = queue.Queue()
+
+        def worker() -> None:
+            try:
+                result = target()
+                result_queue.put((True, result))
+            except Exception as exc:
+                result_queue.put((False, exc))
+
+        def poll() -> None:
+            try:
+                success, result = result_queue.get_nowait()
+            except queue.Empty:
+                self.root.after(100, poll)
+                return
+
+            dialog.close()
+            if success:
+                on_done(result)
+            else:
+                messagebox.showerror("Error", str(result), parent=self.root)
+
+        threading.Thread(target=worker, daemon=True).start()
+        self.root.after(100, poll)
 
     def _log(self, message: str) -> None:
         self.status_text.config(state=tk.NORMAL)
@@ -303,24 +373,33 @@ class ProcessorApp:
             title="Select MB10-VL .DAT export",
             filetypes=[("DAT files", "*.dat"), ("All files", "*.*")],
         )
-        if path:
-            self._load_file(Path(path))
+        if not path:
+            return
+        self._run_with_progress(
+            "Loading .DAT",
+            lambda: self._load_file_sync(Path(path)),
+            self._on_load_complete,
+        )
 
-    def _load_file(self, path: Path) -> None:
+    def _load_file_sync(self, path: Path) -> tuple[Path, list[ParsedRecord], list[Any], int]:
+        records, errors = parse_dat_file(path)
+        new_count = 0
+        if records:
+            new_count = self.registry.import_attendance_logs(records, path)
+        return path, records, errors, new_count
+
+    def _on_load_complete(self, result: tuple[Path, list[ParsedRecord], list[Any], int]) -> None:
+        path, records, errors, new_count = result
         self.current_input_path = path
-        self.path_label.config(text=str(self.current_input_path))
+        self.path_label.config(text=str(path))
         self._clear(self.input_tree)
         self._clear(self.output_tree)
         self.all_processed_records = []
         self.processed_records = []
-        self._log(f"Opened {self.current_input_path}")
-
-        records, errors = parse_dat_file(self.current_input_path)
         self.parsed_records = records
-
+        self._update_logs_label()
+        self._log(f"Opened {path}")
         if records:
-            new_count = self.registry.import_attendance_logs(records, self.current_input_path)
-            self._update_logs_label()
             self._log(f"Saved {new_count} new log row(s) to local DB ({len(records)} total in file).")
 
         displayed = self._refresh_input_tree()
@@ -346,7 +425,16 @@ class ProcessorApp:
         self._log(f"Processed {len(self.all_processed_records)} record(s). {displayed} shown with current filter.")
 
     def _process_from_db(self) -> None:
-        logs = self.registry.get_attendance_logs()
+        def load_logs() -> list[ParsedRecord]:
+            return self.registry.get_attendance_logs()
+
+        self._run_with_progress(
+            "Loading logs from DB",
+            load_logs,
+            self._on_process_from_db_complete,
+        )
+
+    def _on_process_from_db_complete(self, logs: list[ParsedRecord]) -> None:
         if not logs:
             messagebox.showwarning("No logs", "No attendance logs stored in the local DB. Import a .DAT file first.")
             return
@@ -468,13 +556,26 @@ class ProcessorApp:
         if not path:
             return
 
-        employees, errors = parse_user_dat(Path(path))
+        def import_sync() -> tuple[list[Any], list[Any], int]:
+            employees, errors = parse_user_dat(Path(path))
+            if errors:
+                return employees, errors, 0
+            count = self.registry.import_employees(employees)
+            return employees, errors, count
+
+        self._run_with_progress(
+            "Importing user.dat",
+            import_sync,
+            lambda result: self._on_import_user_complete(path, result),
+        )
+
+    def _on_import_user_complete(self, path: str, result: tuple[list[Any], list[Any], int]) -> None:
+        _employees, errors, count = result
         if errors:
             self._log(f"user.dat import errors: {len(errors)}")
             for err in errors:
                 self._log(str(err))
 
-        count = self.registry.import_employees(employees)
         self._update_registry_label()
         self._log(f"Imported {count} employee(s) from {path}")
 
@@ -486,13 +587,26 @@ class ProcessorApp:
         if not path:
             return
 
-        departments, errors = parse_department_dat(Path(path))
+        def import_sync() -> tuple[list[Any], list[Any], int]:
+            departments, errors = parse_department_dat(Path(path))
+            if errors:
+                return departments, errors, 0
+            count = self.registry.import_departments(departments)
+            return departments, errors, count
+
+        self._run_with_progress(
+            "Importing department.dat",
+            import_sync,
+            lambda result: self._on_import_department_complete(path, result),
+        )
+
+    def _on_import_department_complete(self, path: str, result: tuple[list[Any], list[Any], int]) -> None:
+        _departments, errors, count = result
         if errors:
             self._log(f"department.dat import errors: {len(errors)}")
             for err in errors:
                 self._log(str(err))
 
-        count = self.registry.import_departments(departments)
         self._log(f"Imported {count} department(s) from {path}")
 
 
