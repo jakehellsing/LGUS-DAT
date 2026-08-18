@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.10.0`
+`v0.11.0`
 
 ### Status
 
-Date picker added to the date range filter. Start and end dates can be selected from a dropdown calendar instead of typed.
+Imported attendance logs are now persisted to the local SQLite DB. A `Process from DB` button combines logs from multiple devices/sources into a single centralized log store.
 
 ### Implemented
 
@@ -32,6 +32,8 @@ Date picker added to the date range filter. Start and end dates can be selected 
 - [x] Employee search filter for input preview and processed output by ID or name
 - [x] Manual IN/OUT status editing with `MANUAL_EDIT` flag for corrections
 - [x] Calendar date picker for date range filter (using `tkcalendar` DateEntry)
+- [x] Local SQLite persistence of imported attendance logs with multi-device/source support
+- [x] `Process from DB` to process all centralized stored logs
 
 ### In Progress
 
@@ -53,5 +55,6 @@ Date picker added to the date range filter. Start and end dates can be selected 
 | v0.8.0 | 2026-08-12 | Employee search filter for input preview and processed output by ID or name. |
 | v0.9.0 | 2026-08-12 | Manual IN/OUT status editing with `MANUAL_EDIT` flag for corrections. |
 | v0.10.0 | 2026-08-12 | Calendar date picker (`tkcalendar` DateEntry) for date range filter. |
+| v0.11.0 | 2026-08-12 | Local SQLite persistence of imported logs and `Process from DB` for centralized multi-device logs. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

@@ -44,6 +44,7 @@ class ProcessorApp:
 
         self._build_ui()
         self._update_registry_label()
+        self._update_logs_label()
 
         if initial_file:
             self._load_file(initial_file)
@@ -55,6 +56,7 @@ class ProcessorApp:
 
         ttk.Button(toolbar, text="Open .DAT", command=self._open_file).pack(side=tk.LEFT, padx=(0, 4))
         ttk.Button(toolbar, text="Process (F5)", command=self._process).pack(side=tk.LEFT, padx=4)
+        ttk.Button(toolbar, text="Process from DB", command=self._process_from_db).pack(side=tk.LEFT, padx=4)
         ttk.Button(toolbar, text="Save CSV", command=self._save_csv).pack(side=tk.LEFT, padx=4)
         ttk.Button(toolbar, text="Export attlog.dat", command=self._export_attlog).pack(side=tk.LEFT, padx=4)
         ttk.Button(toolbar, text="Edit Status", command=self._edit_selected_status).pack(side=tk.LEFT, padx=4)
@@ -118,6 +120,13 @@ class ProcessorApp:
         )
         self.registry_label.pack(fill=tk.X)
 
+        self.logs_label = ttk.Label(
+            self.root,
+            text="Stored logs: 0 rows",
+            padding=8,
+        )
+        self.logs_label.pack(fill=tk.X)
+
         # Notebook with input preview and output
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
@@ -165,6 +174,10 @@ class ProcessorApp:
         with self.registry._connection() as conn:
             count = conn.execute("SELECT COUNT(*) FROM employees").fetchone()[0]
         self.registry_label.config(text=f"Registry: {self.registry.db_path} — {count} employees")
+
+    def _update_logs_label(self) -> None:
+        count = self.registry.count_attendance_logs()
+        self.logs_label.config(text=f"Stored logs: {count} row(s) from {len(self.registry.get_attendance_log_sources())} source(s)")
 
     def _parse_date_var(self, var: tk.StringVar) -> Optional[date]:
         text = var.get().strip()
@@ -305,6 +318,11 @@ class ProcessorApp:
         records, errors = parse_dat_file(self.current_input_path)
         self.parsed_records = records
 
+        if records:
+            new_count = self.registry.import_attendance_logs(records, self.current_input_path)
+            self._update_logs_label()
+            self._log(f"Saved {new_count} new log row(s) to local DB ({len(records)} total in file).")
+
         displayed = self._refresh_input_tree()
 
         if errors:
@@ -326,6 +344,20 @@ class ProcessorApp:
 
         displayed = self._refresh_output_tree()
         self._log(f"Processed {len(self.all_processed_records)} record(s). {displayed} shown with current filter.")
+
+    def _process_from_db(self) -> None:
+        logs = self.registry.get_attendance_logs()
+        if not logs:
+            messagebox.showwarning("No logs", "No attendance logs stored in the local DB. Import a .DAT file first.")
+            return
+
+        self.current_input_path = None
+        self.path_label.config(text="<all stored logs>")
+        self.parsed_records = logs
+
+        displayed_input = self._refresh_input_tree()
+        self._process()
+        self._log(f"Loaded {len(logs)} log row(s) from DB. {displayed_input} shown with current filter.")
 
     def _edit_status_dialog(self, current: PunchStatus) -> Optional[PunchStatus]:
         dialog = tk.Toplevel(self.root)

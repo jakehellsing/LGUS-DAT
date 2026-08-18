@@ -1,13 +1,15 @@
-"""SQLite-backed registry for employees and departments."""
+"""SQLite-backed registry for employees, departments, and attendance logs."""
 
 from __future__ import annotations
 
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from lgus_dat.domain.department import Department
 from lgus_dat.domain.employee import Employee
+from lgus_dat.parser.dat_parser import ParsedRecord
 
 
 class AttendanceRegistry:
@@ -45,6 +47,22 @@ class AttendanceRegistry:
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_employees_name ON employees (name);
+
+                CREATE TABLE IF NOT EXISTS attendance_logs (
+                    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    employee_id TEXT NOT NULL,
+                    log_date TEXT NOT NULL,
+                    log_time TEXT NOT NULL,
+                    timestamp TEXT NOT NULL,
+                    original_line TEXT NOT NULL,
+                    source_file TEXT NOT NULL,
+                    imported_at TEXT NOT NULL,
+                    UNIQUE(employee_id, timestamp, original_line, source_file)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_attendance_logs_employee ON attendance_logs (employee_id);
+                CREATE INDEX IF NOT EXISTS idx_attendance_logs_date ON attendance_logs (log_date);
+                CREATE INDEX IF NOT EXISTS idx_attendance_logs_source ON attendance_logs (source_file);
                 """
             )
             # Migrate older registries that may be missing the raw_record columns.
@@ -178,3 +196,71 @@ class AttendanceRegistry:
     def department_name(self, department_id: int) -> Optional[str]:
         dept = self.get_department(department_id)
         return dept.name if dept else None
+
+    def import_attendance_logs(
+        self,
+        records: list[ParsedRecord],
+        source_file: Path,
+    ) -> int:
+        """Store raw attendance records, skipping exact duplicates for this source."""
+        imported_at = datetime.now().isoformat()
+        source = str(source_file)
+        with self._connection() as conn:
+            changes_before = conn.total_changes
+            for record in records:
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO attendance_logs
+                    (employee_id, log_date, log_time, timestamp, original_line, source_file, imported_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        record.employee_id,
+                        record.timestamp.date().isoformat(),
+                        record.timestamp.strftime("%H:%M:%S"),
+                        record.timestamp.isoformat(),
+                        record.original_line,
+                        source,
+                        imported_at,
+                    ),
+                )
+            conn.commit()
+            return conn.total_changes - changes_before
+
+    def get_attendance_logs(self) -> list[ParsedRecord]:
+        """Return all stored attendance logs, ordered by timestamp then original line."""
+        with self._connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT employee_id, timestamp, original_line
+                FROM attendance_logs
+                ORDER BY timestamp, original_line
+                """
+            ).fetchall()
+
+        records: list[ParsedRecord] = []
+        for row in rows:
+            timestamp = datetime.fromisoformat(row["timestamp"])
+            original_line = row["original_line"]
+            fields = tuple(original_line.split())
+            records.append(
+                ParsedRecord(
+                    employee_id=row["employee_id"],
+                    timestamp=timestamp,
+                    original_line=original_line,
+                    fields=fields,
+                )
+            )
+        return records
+
+    def count_attendance_logs(self) -> int:
+        with self._connection() as conn:
+            row = conn.execute("SELECT COUNT(*) FROM attendance_logs").fetchone()
+        return row[0] if row else 0
+
+    def get_attendance_log_sources(self) -> list[str]:
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT source_file FROM attendance_logs ORDER BY source_file"
+            ).fetchall()
+        return [row["source_file"] for row in rows]
