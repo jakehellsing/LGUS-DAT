@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.12.1`
+`v0.12.2`
 
 ### Status
 
-The processed `attlog.dat` export now preserves the exact Device ID field formatting (padding/width) from the source file instead of forcing a 14-character right-padded ID.
+Fixed the `user.dat` writer to use the correct ZK8 72-byte record layout: the string user ID/PIN is now at byte 48 (24-byte field), the constant 0x01 is preserved at byte 39, and privilege/card/group fields are read from the original raw record so IDs and names no longer shift.
 
 ### Implemented
 
@@ -59,5 +59,6 @@ The processed `attlog.dat` export now preserves the exact Device ID field format
 | v0.11.0 | 2026-08-12 | Local SQLite persistence of imported logs and `Process from DB` for centralized multi-device logs. |
 | v0.12.0 | 2026-08-12 | Search filter and clickable column sorting in employee/department management. |
 | v0.12.1 | 2026-08-12 | Processed `attlog.dat` export preserves the original Device ID padding/width from the source file. |
+| v0.12.2 | 2026-08-12 | Fixed `user.dat` binary export layout to match ZKTeco/NGteco ZK8 72-byte record format and prevent ID/name shifting. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
