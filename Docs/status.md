@@ -63,5 +63,6 @@ Added full device backup import/export in Employee Management: `user.dat`, `depa
 | v0.12.3 | 2026-08-12 | Read the string User ID/PIN at byte 48 (not the single-byte UID) and default employee list/export to numeric sort. |
 | v0.12.4 | 2026-08-12 | Added a threaded progress bar for `user.dat`, `department.dat`, and `.DAT` imports so the UI stays responsive while files are parsed and stored. |
 | v0.13.0 | 2026-08-18 | Added full device backup import/export in Employee Management: `user.dat`, `department.dat`, `biotemplate.dat`, and raw `template.fp10*` files. |
+| v0.13.1 | 2026-08-19 | Hardcoded workcode to '1' in `attlog.dat` export for NGTeco software compatibility. Can be reverted if needed - see `src/lgus_dat/output/attlog_writer.py`. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

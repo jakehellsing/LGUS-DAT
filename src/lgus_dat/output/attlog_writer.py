@@ -35,12 +35,16 @@ def _format_id_field(original_record: str, employee_id: str) -> str:
 
 
 def _default_extras(original_record: str) -> tuple[str, str, str, str]:
-    """Extract original verify/status/workcode/reserved fields if present."""
+    """Extract original verify/status/workcode/reserved fields if present.
+
+    NOTE: Workcode is hardcoded to '1' for NGTeco software compatibility.
+    This can be reverted if needed - see Docs/status.md.
+    """
     parts = original_record.split()
     if len(parts) >= 7:
-        return parts[3], parts[4], parts[5], parts[6]
+        return parts[3], parts[4], "1", parts[6]
     # Fallback when the source line is missing trailing device fields.
-    return "1", "0", "0", "0"
+    return "1", "0", "1", "0"
 
 
 def _status_to_field(status: PunchStatus, current_value: str) -> str:
