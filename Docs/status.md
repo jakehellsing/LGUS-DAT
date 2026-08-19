@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.12.4`
+`v0.13.0`
 
 ### Status
 
-Added a threaded progress bar for `user.dat`, `department.dat`, and `.DAT` imports so the UI stays responsive while files are parsed and stored.
+Added full device backup import/export in Employee Management: `user.dat`, `department.dat`, and `biotemplate.dat` are parsed/written in the device text format; raw `template.fp10*` files are preserved for round-trip.
 
 ### Implemented
 
@@ -62,5 +62,6 @@ Added a threaded progress bar for `user.dat`, `department.dat`, and `.DAT` impor
 | v0.12.2 | 2026-08-12 | Fixed `user.dat` binary export layout to match ZKTeco/NGteco ZK8 72-byte record format and prevent ID/name shifting. |
 | v0.12.3 | 2026-08-12 | Read the string User ID/PIN at byte 48 (not the single-byte UID) and default employee list/export to numeric sort. |
 | v0.12.4 | 2026-08-12 | Added a threaded progress bar for `user.dat`, `department.dat`, and `.DAT` imports so the UI stays responsive while files are parsed and stored. |
+| v0.13.0 | 2026-08-18 | Added full device backup import/export in Employee Management: `user.dat`, `department.dat`, `biotemplate.dat`, and raw `template.fp10*` files. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

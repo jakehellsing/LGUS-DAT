@@ -9,8 +9,12 @@ from typing import Callable, Optional
 
 from lgus_dat.domain.department import Department
 from lgus_dat.domain.employee import Employee
+from lgus_dat.exporters.biotemplate_writer import write_biotemplate_dat
 from lgus_dat.exporters.department_dat_writer import write_department_dat
 from lgus_dat.exporters.user_dat_writer import write_user_dat
+from lgus_dat.importers.biotemplate_parser import parse_biotemplate_dat
+from lgus_dat.importers.department_parser import parse_department_dat
+from lgus_dat.importers.user_parser import parse_user_dat
 from lgus_dat.persistence.registry import AttendanceRegistry
 
 
@@ -218,6 +222,8 @@ class ManagementDialog:
         # Export buttons
         export_frame = ttk.Frame(self.window)
         export_frame.pack(fill=tk.X, padx=8, pady=(0, 8))
+        ttk.Button(export_frame, text="Import Device Backup", command=self._import_device_backup).pack(side=tk.LEFT, padx=2)
+        ttk.Button(export_frame, text="Export Device Backup", command=self._export_device_backup).pack(side=tk.LEFT, padx=2)
         ttk.Button(export_frame, text="Export user.dat", command=self._export_user_dat).pack(side=tk.LEFT, padx=2)
         ttk.Button(export_frame, text="Export department.dat", command=self._export_department_dat).pack(
             side=tk.LEFT, padx=2
@@ -312,6 +318,7 @@ class ManagementDialog:
         user_id = str(values[0])
         if messagebox.askyesno("Confirm", f"Delete employee {user_id}?", parent=self.window):
             self.registry.delete_employee(user_id)
+            self.registry.delete_biotemplates_for_pin(user_id)
             self._refresh()
             self._notify_change()
 
@@ -374,6 +381,73 @@ class ManagementDialog:
         write_department_dat(departments, Path(path))
         messagebox.showinfo(
             "Export", f"Exported {len(departments)} department(s) to {path}", parent=self.window
+        )
+
+    def _import_device_backup(self) -> None:
+        path = filedialog.askdirectory(title="Select device backup folder")
+        if not path:
+            return
+
+        folder = Path(path)
+        messages: list[str] = []
+
+        user_dat = folder / "user.dat"
+        if user_dat.exists():
+            employees, errors = parse_user_dat(user_dat)
+            if errors:
+                messages.append(f"user.dat errors: {len(errors)}")
+            count = self.registry.import_employees(employees)
+            messages.append(f"user.dat: {count} employee(s)")
+
+        dept_dat = folder / "department.dat"
+        if dept_dat.exists():
+            departments, errors = parse_department_dat(dept_dat)
+            if errors:
+                messages.append(f"department.dat errors: {len(errors)}")
+            count = self.registry.import_departments(departments)
+            messages.append(f"department.dat: {count} department(s)")
+
+        bio_dat = folder / "biotemplate.dat"
+        if bio_dat.exists():
+            templates = parse_biotemplate_dat(bio_dat)
+            count = self.registry.import_biotemplates(templates)
+            messages.append(f"biotemplate.dat: {count} template(s)")
+
+        raw_files = {}
+        for fp in folder.glob("template.fp10*"):
+            raw_files[fp.name] = fp.read_bytes()
+        if raw_files:
+            count = self.registry.import_template_files(raw_files)
+            messages.append(f"template files: {count}")
+
+        self._refresh()
+        self._notify_change()
+        messagebox.showinfo("Import", "\n".join(messages) or "No recognized backup files found.", parent=self.window)
+
+    def _export_device_backup(self) -> None:
+        path = filedialog.askdirectory(title="Select backup export folder")
+        if not path:
+            return
+
+        folder = Path(path)
+        employees = self.registry.all_employees()
+        write_user_dat(employees, folder / "user.dat")
+
+        departments = self.registry.all_departments()
+        write_department_dat(departments, folder / "department.dat")
+
+        templates = self.registry.all_biotemplates()
+        write_biotemplate_dat(templates, folder / "biotemplate.dat")
+
+        raw_files = self.registry.all_template_files()
+        for filename, content in raw_files.items():
+            (folder / filename).write_bytes(content)
+
+        messagebox.showinfo(
+            "Export",
+            f"Exported {len(employees)} employee(s), {len(departments)} department(s), "
+            f"{len(templates)} template(s) to {folder}",
+            parent=self.window,
         )
 
     def _notify_change(self) -> None:

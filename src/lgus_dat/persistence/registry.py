@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from lgus_dat.domain.biometric_template import BiometricTemplate
 from lgus_dat.domain.department import Department
 from lgus_dat.domain.employee import Employee
 from lgus_dat.parser.dat_parser import ParsedRecord
@@ -63,6 +64,25 @@ class AttendanceRegistry:
                 CREATE INDEX IF NOT EXISTS idx_attendance_logs_employee ON attendance_logs (employee_id);
                 CREATE INDEX IF NOT EXISTS idx_attendance_logs_date ON attendance_logs (log_date);
                 CREATE INDEX IF NOT EXISTS idx_attendance_logs_source ON attendance_logs (source_file);
+
+                CREATE TABLE IF NOT EXISTS biotemplates (
+                    pin TEXT NOT NULL,
+                    no INTEGER NOT NULL,
+                    index_no INTEGER NOT NULL,
+                    valid INTEGER NOT NULL DEFAULT 1,
+                    duress INTEGER NOT NULL DEFAULT 0,
+                    type INTEGER NOT NULL DEFAULT 0,
+                    major_ver INTEGER NOT NULL DEFAULT 0,
+                    minor_ver INTEGER NOT NULL DEFAULT 0,
+                    format INTEGER NOT NULL DEFAULT 0,
+                    tmp TEXT NOT NULL,
+                    PRIMARY KEY (pin, no, index_no)
+                );
+
+                CREATE TABLE IF NOT EXISTS template_files (
+                    filename TEXT PRIMARY KEY,
+                    content BLOB NOT NULL
+                );
                 """
             )
             # Migrate older registries that may be missing the raw_record columns.
@@ -190,6 +210,104 @@ class AttendanceRegistry:
                 "SELECT department_id, name, raw_record FROM departments ORDER BY department_id"
             ).fetchall()
         return [self._row_to_department(row) for row in rows]
+
+    def _row_to_biotemplate(self, row: sqlite3.Row) -> BiometricTemplate:
+        return BiometricTemplate(
+            pin=row["pin"],
+            no=row["no"],
+            index=row["index_no"],
+            valid=row["valid"],
+            duress=row["duress"],
+            type=row["type"],
+            major_ver=row["major_ver"],
+            minor_ver=row["minor_ver"],
+            format=row["format"],
+            tmp=row["tmp"],
+        )
+
+    def upsert_biotemplate(self, template: BiometricTemplate) -> None:
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO biotemplates (pin, no, index_no, valid, duress, type, major_ver, minor_ver, format, tmp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(pin, no, index_no) DO UPDATE SET
+                    valid = excluded.valid,
+                    duress = excluded.duress,
+                    type = excluded.type,
+                    major_ver = excluded.major_ver,
+                    minor_ver = excluded.minor_ver,
+                    format = excluded.format,
+                    tmp = excluded.tmp
+                """,
+                (
+                    template.pin,
+                    template.no,
+                    template.index,
+                    template.valid,
+                    template.duress,
+                    template.type,
+                    template.major_ver,
+                    template.minor_ver,
+                    template.format,
+                    template.tmp,
+                ),
+            )
+            conn.commit()
+
+    def import_biotemplates(self, templates: list[BiometricTemplate]) -> int:
+        count = 0
+        for template in templates:
+            self.upsert_biotemplate(template)
+            count += 1
+        return count
+
+    def all_biotemplates(self) -> list[BiometricTemplate]:
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT pin, no, index_no, valid, duress, type, major_ver, minor_ver, format, tmp FROM biotemplates ORDER BY pin"
+            ).fetchall()
+        templates = [self._row_to_biotemplate(row) for row in rows]
+        templates.sort(key=lambda t: (int(t.pin) if t.pin.isdigit() else float("inf"), t.no, t.index))
+        return templates
+
+    def biotemplates_for_pin(self, pin: str) -> list[BiometricTemplate]:
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT pin, no, index_no, valid, duress, type, major_ver, minor_ver, format, tmp FROM biotemplates WHERE pin = ? ORDER BY no, index_no",
+                (pin,),
+            ).fetchall()
+        return [self._row_to_biotemplate(row) for row in rows]
+
+    def update_biotemplate_pin(self, old_pin: str, new_pin: str) -> None:
+        with self._connection() as conn:
+            conn.execute(
+                "UPDATE biotemplates SET pin = ? WHERE pin = ?",
+                (new_pin, old_pin),
+            )
+            conn.commit()
+
+    def delete_biotemplates_for_pin(self, pin: str) -> None:
+        with self._connection() as conn:
+            conn.execute("DELETE FROM biotemplates WHERE pin = ?", (pin,))
+            conn.commit()
+
+    def import_template_files(self, files: dict[str, bytes]) -> int:
+        with self._connection() as conn:
+            count = 0
+            for filename, content in files.items():
+                conn.execute(
+                    "INSERT INTO template_files (filename, content) VALUES (?, ?) ON CONFLICT(filename) DO UPDATE SET content = excluded.content",
+                    (filename, content),
+                )
+                count += 1
+            conn.commit()
+        return count
+
+    def all_template_files(self) -> dict[str, bytes]:
+        with self._connection() as conn:
+            rows = conn.execute("SELECT filename, content FROM template_files ORDER BY filename").fetchall()
+        return {row["filename"]: row["content"] for row in rows}
 
     def employee_name(self, device_user_id: str) -> Optional[str]:
         emp = self.get_employee(device_user_id)
