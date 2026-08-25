@@ -120,7 +120,11 @@ class ProcessorApp:
             date_pattern="y-mm-dd",
         )
         self.start_date_entry.delete(0, tk.END)
-        self.start_date_entry.pack(side=tk.LEFT, padx=(4, 8))
+        self.start_date_entry.pack(side=tk.LEFT, padx=(4, 2))
+        
+        self.start_time_var = tk.StringVar()
+        self.start_time_entry = ttk.Entry(filter_toolbar, textvariable=self.start_time_var, width=8)
+        self.start_time_entry.pack(side=tk.LEFT, padx=(0, 8))
 
         ttk.Label(filter_toolbar, text="End:").pack(side=tk.LEFT)
         self.end_date_var = tk.StringVar()
@@ -131,7 +135,11 @@ class ProcessorApp:
             date_pattern="y-mm-dd",
         )
         self.end_date_entry.delete(0, tk.END)
-        self.end_date_entry.pack(side=tk.LEFT, padx=(4, 8))
+        self.end_date_entry.pack(side=tk.LEFT, padx=(4, 2))
+        
+        self.end_time_var = tk.StringVar()
+        self.end_time_entry = ttk.Entry(filter_toolbar, textvariable=self.end_time_var, width=8)
+        self.end_time_entry.pack(side=tk.LEFT, padx=(0, 8))
 
         ttk.Button(filter_toolbar, text="Apply Filter", command=self._apply_date_filter).pack(side=tk.LEFT, padx=4)
         ttk.Button(filter_toolbar, text="Clear", command=self._clear_date_filter).pack(side=tk.LEFT, padx=4)
@@ -259,12 +267,34 @@ class ProcessorApp:
             messagebox.showwarning("Invalid date", f"'{text}' is not a valid YYYY-MM-DD date.")
             return None
 
+    def _parse_datetime_var(self, date_var: tk.StringVar, time_var: tk.StringVar) -> Optional[datetime]:
+        date_text = date_var.get().strip()
+        time_text = time_var.get().strip()
+        
+        if not date_text and not time_text:
+            return None
+        
+        try:
+            if date_text:
+                parsed_date = date.fromisoformat(date_text)
+            else:
+                parsed_date = date.today()
+            
+            if time_text:
+                parsed_time = datetime.strptime(time_text, "%H:%M:%S").time()
+                return datetime.combine(parsed_date, parsed_time)
+            else:
+                return datetime.combine(parsed_date, time.min)
+        except ValueError as e:
+            messagebox.showwarning("Invalid datetime", f"Invalid date/time format: {e}")
+            return None
+
     def _refresh_filter_dates(self) -> bool:
-        start = self._parse_date_var(self.start_date_var)
-        if start is None and self.start_date_var.get().strip():
+        start = self._parse_datetime_var(self.start_date_var, self.start_time_var)
+        if start is None and (self.start_date_var.get().strip() or self.start_time_var.get().strip()):
             return False
-        end = self._parse_date_var(self.end_date_var)
-        if end is None and self.end_date_var.get().strip():
+        end = self._parse_datetime_var(self.end_date_var, self.end_time_var)
+        if end is None and (self.end_date_var.get().strip() or self.end_time_var.get().strip()):
             return False
         self._filter_start, self._filter_end = start, end
         return True
@@ -272,7 +302,7 @@ class ProcessorApp:
     def _filtered_parsed_records(self) -> list[ParsedRecord]:
         records = filter_by_date(
             self.parsed_records,
-            lambda rec: rec.timestamp.date(),
+            lambda rec: rec.timestamp,
             self._filter_start,
             self._filter_end,
         )
@@ -288,7 +318,7 @@ class ProcessorApp:
     def _filtered_processed_records(self) -> list[AttendanceRecord]:
         records = filter_by_date(
             self.all_processed_records,
-            lambda rec: rec.punch_date,
+            lambda rec: rec.timestamp,
             self._filter_start,
             self._filter_end,
         )
@@ -323,7 +353,13 @@ class ProcessorApp:
         self._clear(self.output_tree)
         self._output_tree_records.clear()
         self.processed_records = self._filtered_processed_records()
+        
+        # Configure tags for status colors
+        self.output_tree.tag_configure("IN", background="#E3F2FD")  # Light blue
+        self.output_tree.tag_configure("OUT", background="#FFF9C4")  # Light yellow
+        
         for rec in self.processed_records:
+            tag = "IN" if rec.status.value == "IN" else "OUT"
             item = self.output_tree.insert(
                 "",
                 tk.END,
@@ -336,6 +372,7 @@ class ProcessorApp:
                     rec.status.value,
                     rec.exception_flag or "",
                 ),
+                tags=(tag,),
             )
             self._output_tree_records[item] = rec
         return len(self.processed_records)
@@ -349,7 +386,9 @@ class ProcessorApp:
 
     def _clear_date_filter(self) -> None:
         self.start_date_var.set("")
+        self.start_time_var.set("")
         self.end_date_var.set("")
+        self.end_time_var.set("")
         self._filter_start = None
         self._filter_end = None
         self._apply_date_filter()

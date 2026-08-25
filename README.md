@@ -61,6 +61,13 @@ lgus-dat-gui
 
 The UI lets you open a `.dat` file, preview the raw records, process them into IN/OUT rows, and save the resulting CSV.
 
+**Features:**
+- Date and time range filtering for precise datetime selection (HH:MM:SS format)
+- Color-coded status rows (IN=light blue, OUT=light yellow)
+- NGTeco-compatible `attlog.dat` export with workcode '1'
+- Employee search filter by ID or name
+- Manual IN/OUT status editing with correction flags
+
 You can also import the device's `user.dat` to resolve employee names from numeric IDs and `department.dat` to build a department registry. Use **Manage Employees** to view, add, edit, or delete employees and departments, then export them back to the same ZKTeco/NGteco binary `user.dat` / `department.dat` formats for re-import into the device.
 
 ## Standalone Executable
