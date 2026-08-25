@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.14.0`
+`v0.15.0`
 
 ### Status
 
-Added time selection to date range filter for precise datetime filtering, color-coded status rows (IN=light blue, OUT=light yellow), and hardcoded workcode to '1' in `attlog.dat` export for NGTeco software compatibility.
+Added DTR PDF generation with excel-like monthly attendance reports, including duplicate punch handling, 4-punch time slot mapping, dynamic employee/department selection, and month picker for report generation.
 
 ### Implemented
 
@@ -38,6 +38,12 @@ Added time selection to date range filter for precise datetime filtering, color-
 - [x] `Process from DB` to process all centralized stored logs
 - [x] Search filter and column sorting in the employee/department management window
 - [x] NGTeco-compatible `attlog.dat` export with workcode '1'
+- [x] DTR PDF generation with excel-like monthly attendance reports (`src/lgus_dat/output/pdf_writer.py`)
+- [x] Duplicate punch handling (keeps first occurrence of same timestamp)
+- [x] 4-punch mapping to time slots (IN AM, OUT AM, IN PM, OUT PM)
+- [x] Month picker for DTR report generation in GUI
+- [x] Dynamic employee/department selection dialog for PDF reports
+- [x] ReportLab integration for PDF generation
 
 ### In Progress
 
@@ -68,5 +74,6 @@ Added time selection to date range filter for precise datetime filtering, color-
 | v0.13.0 | 2026-08-18 | Added full device backup import/export in Employee Management: `user.dat`, `department.dat`, `biotemplate.dat`, and raw `template.fp10*` files. |
 | v0.13.1 | 2026-08-19 | Hardcoded workcode to '1' in `attlog.dat` export for NGTeco software compatibility. Can be reverted if needed - see `src/lgus_dat/output/attlog_writer.py`. |
 | v0.14.0 | 2026-08-20 | Added time selection to date range filter for precise datetime filtering (HH:MM:SS format), color-coded status rows (IN=light blue, OUT=light yellow), and NGTeco-compatible `attlog.dat` export with workcode '1'. |
+| v0.15.0 | 2026-08-25 | Added DTR PDF generation with excel-like monthly attendance reports, duplicate punch handling, 4-punch time slot mapping, dynamic employee/department selection, and month picker for report generation. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

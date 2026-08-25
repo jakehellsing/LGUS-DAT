@@ -19,11 +19,13 @@ from lgus_dat.importers.department_parser import parse_department_dat
 from lgus_dat.importers.user_parser import parse_user_dat
 from lgus_dat.output.attlog_writer import write_attlog
 from lgus_dat.output.csv_writer import write_csv
+from lgus_dat.output.pdf_writer import generate_dtr_pdf, group_records_by_employee
 from lgus_dat.parser.dat_parser import ParsedRecord, parse_dat_file
 from lgus_dat.persistence.registry import AttendanceRegistry
 from lgus_dat.processing.sequence_processor import process_records
 from lgus_dat.ui.date_filter import filter_by_date
 from lgus_dat.ui.management_dialog import ManagementDialog
+from lgus_dat.ui.pdf_selection_dialog import DTRSelectionDialog
 from lgus_dat.ui.search_filter import filter_by_search
 
 
@@ -153,6 +155,23 @@ class ProcessorApp:
         ttk.Entry(search_toolbar, textvariable=self.search_var, width=24).pack(side=tk.LEFT, padx=(4, 8))
         ttk.Button(search_toolbar, text="Search", command=self._apply_search_filter).pack(side=tk.LEFT, padx=4)
         ttk.Button(search_toolbar, text="Clear", command=self._clear_search_filter).pack(side=tk.LEFT, padx=4)
+
+        # DTR PDF Report toolbar
+        pdf_toolbar = ttk.LabelFrame(self.root, text="DTR PDF Report", padding=8)
+        pdf_toolbar.pack(fill=tk.X, padx=8, pady=(0, 4))
+
+        ttk.Label(pdf_toolbar, text="Month:").pack(side=tk.LEFT)
+        self.report_month_var = tk.StringVar()
+        self.report_month_entry = DateEntry(
+            pdf_toolbar,
+            textvariable=self.report_month_var,
+            width=12,
+            date_pattern="y-mm-dd",
+        )
+        self.report_month_entry.delete(0, tk.END)
+        self.report_month_entry.pack(side=tk.LEFT, padx=(4, 8))
+
+        ttk.Button(pdf_toolbar, text="Generate DTR PDF", command=self._generate_dtr_pdf).pack(side=tk.LEFT, padx=4)
 
         # File path label
         self.path_label = ttk.Label(self.root, text="No file selected", padding=8)
@@ -648,6 +667,94 @@ class ProcessorApp:
 
         self._log(f"Imported {count} department(s) from {path}")
 
+    def _generate_dtr_pdf(self) -> None:
+        if not self.all_processed_records:
+            messagebox.showwarning("No data", "Process attendance data first.")
+            return
+
+        # Get month from picker
+        month_text = self.report_month_var.get().strip()
+        if not month_text:
+            messagebox.showwarning("No month", "Please select a month for the DTR report.")
+            return
+
+        try:
+            report_date = date.fromisoformat(month_text)
+        except ValueError:
+            messagebox.showwarning("Invalid date", f"'{month_text}' is not a valid YYYY-MM-DD date.")
+            return
+
+        # Show selection dialog
+        dialog = DTRSelectionDialog(self.root, self.registry)
+        if dialog.result is None:
+            return  # User cancelled
+
+        # Filter records based on selection
+        filtered_records = self._filter_records_for_dtr(dialog.result, self.all_processed_records)
+
+        if not filtered_records:
+            messagebox.showwarning("No data", "No attendance records found for the selected criteria.")
+            return
+
+        # Generate PDF
+        path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")],
+            initialfile=f"DTR_{report_date.strftime('%Y_%m')}.pdf",
+        )
+        if not path:
+            return
+
+        def generate_sync() -> tuple[str, int]:
+            # Get employee names and department info
+            employee_names = {emp.device_user_id: emp.name for emp in self.registry.all_employees()}
+            department_names = {dept.department_id: dept.name for dept in self.registry.all_departments()}
+            employee_departments = {emp.device_user_id: emp.department_id for emp in self.registry.all_employees() if emp.department_id is not None}
+
+            # Group records by employee
+            grouped = group_records_by_employee(filtered_records)
+
+            generate_dtr_pdf(
+                employee_records=grouped,
+                month=report_date,
+                output_path=Path(path),
+                employee_names=employee_names,
+                department_names=department_names,
+                employee_departments=employee_departments,
+            )
+            return path, len(filtered_records)
+
+        self._run_with_progress(
+            "Generating DTR PDF",
+            generate_sync,
+            lambda result: self._on_dtr_pdf_complete(result, report_date),
+        )
+
+    def _filter_records_for_dtr(self, selection: dict, records: list[AttendanceRecord]) -> list[AttendanceRecord]:
+        """Filter attendance records based on DTR selection dialog result."""
+        mode = selection["mode"]
+        
+        if mode == "all":
+            return records
+        
+        filtered = []
+        if mode == "employees":
+            employee_ids = set(selection["employee_ids"])
+            filtered = [r for r in records if r.employee_id in employee_ids]
+        elif mode == "departments":
+            department_ids = set(selection["department_ids"])
+            # Get employees in selected departments
+            employee_ids = set()
+            for emp in self.registry.all_employees():
+                if emp.department_id in department_ids:
+                    employee_ids.add(emp.device_user_id)
+            filtered = [r for r in records if r.employee_id in employee_ids]
+        
+        return filtered
+
+    def _on_dtr_pdf_complete(self, result: tuple[str, int], report_date: date) -> None:
+        path, count = result
+        self._log(f"Generated DTR PDF for {report_date.strftime('%B %Y')}: {count} record(s) saved to {path}")
 
 def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]

@@ -8,7 +8,7 @@ This project consumes raw `.dat` attendance exports from a ZKTeco MB10-VL biomet
 
 > For each employee and calendar date, sort raw punches chronologically and alternate `IN`/`OUT` starting with `IN`.
 
-See `Docs/MB10-VL_Sequential_IN_OUT_Dev_Blueprint.md` for full requirements.
+See `Docs/MB10-VL_Sequential_IN_OUT_Dev_Blueprint.md` for full requirements and `Docs/DTR_PDF_Generation.md` for PDF report documentation.
 
 ## Project Structure
 
@@ -20,12 +20,12 @@ src/
     persistence/    SQLite employee/department registry
     domain/         Attendance models
     processing/     Sequence logic
-    output/         CSV writers
+    output/         CSV and PDF writers
     cli/            Command-line entry point
     ui/             Desktop tkinter interface
 
 tests/              Automated tests
-Docs/               Blueprint and status
+Docs/               Blueprint, status, and feature guides
 ```
 
 ## Usage
@@ -67,6 +67,10 @@ The UI lets you open a `.dat` file, preview the raw records, process them into I
 - NGTeco-compatible `attlog.dat` export with workcode '1'
 - Employee search filter by ID or name
 - Manual IN/OUT status editing with correction flags
+- **DTR PDF generation** with excel-like monthly attendance reports
+- Duplicate punch handling (keeps first occurrence of same timestamp)
+- 4-punch mapping to time slots (IN AM, OUT AM, IN PM, OUT PM)
+- Dynamic employee/department selection for reports
 
 You can also import the device's `user.dat` to resolve employee names from numeric IDs and `department.dat` to build a department registry. Use **Manage Employees** to view, add, edit, or delete employees and departments, then export them back to the same ZKTeco/NGteco binary `user.dat` / `department.dat` formats for re-import into the device.
 

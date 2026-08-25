@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['scripts\\gui_entry.py'],
+    ['src\\lgus_dat\\ui\\app.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='NONE',
 )
