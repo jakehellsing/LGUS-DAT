@@ -91,10 +91,18 @@ src/lgus_dat/ui/
 - Employee and department management
 - CRUD operations for employees and departments
 - Device backup import/export
+- Department dropdown selection for employee assignment
+- Department details view with employee management
+- Employee count display per department
 
 **StatusEditDialog**
 - Simple status selection dialog (IN/OUT)
 - Modal dialog with OK/Cancel buttons
+
+**Internal Dialog Classes**
+- `_EmployeeDialog`: Employee add/edit with department dropdown
+- `_DepartmentDialog`: Department add/edit with validation
+- `_DepartmentDetailsDialog`: Department details and employee management
 
 ### Controller (`ui/controller.py`)
 
@@ -239,6 +247,37 @@ def test_controller_workflow():
 - Progress dialogs prevent UI freezing during long operations
 - Efficient data filtering and treeview updates
 - State management minimizes redundant operations
+
+## Recent UI/UX Improvements
+
+### Department Management Enhancements
+
+**Employee Dialog Improvements**
+- Replaced department ID text input with dropdown selection
+- Shows department names instead of numeric IDs
+- Includes empty option for unassigned employees
+- Improved validation and user experience
+
+**Department Tab Enhancements**
+- Added "View Details" button for comprehensive department management
+- Added employee count column to department treeview
+- Implemented safety check to prevent deletion of departments with assigned employees
+- Enhanced sorting to handle empty values properly
+
+**Department Details Dialog**
+- New `_DepartmentDetailsDialog` class for viewing department information
+- Shows department ID, name, and current employee count
+- Employee management within department:
+  - Add employees from available unassigned pool
+  - Remove employees from department (sets to unassigned)
+  - View current department members
+- Real-time employee count updates
+
+**Employee Display Improvements**
+- Changed column header from "Department ID" to "Department"
+- Displays department names instead of numeric IDs
+- Updated search functionality to work with department names
+- Improved filtering by department name
 
 ## Future Enhancements
 

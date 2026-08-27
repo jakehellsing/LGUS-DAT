@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tkinter as tk
+from dataclasses import replace
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Optional
@@ -46,11 +47,24 @@ class _EmployeeDialog:
         self.name_var = tk.StringVar(value=employee.name if employee else "")
         ttk.Entry(frame, textvariable=self.name_var).grid(row=1, column=1, sticky=tk.EW, pady=4)
 
-        ttk.Label(frame, text="Department ID:").grid(row=2, column=0, sticky=tk.W, pady=4)
-        self.dept_var = tk.StringVar(
-            value=str(employee.department_id) if employee and employee.department_id is not None else ""
-        )
-        ttk.Entry(frame, textvariable=self.dept_var).grid(row=2, column=1, sticky=tk.EW, pady=4)
+        ttk.Label(frame, text="Department:").grid(row=2, column=0, sticky=tk.W, pady=4)
+        
+        # Get all departments for dropdown
+        departments = self.registry.all_departments()
+        dept_names = [dept.name for dept in departments]
+        dept_names.insert(0, "")  # Add empty option for no department
+        
+        # Find current department name
+        current_dept_name = ""
+        if employee and employee.department_id is not None:
+            for dept in departments:
+                if dept.department_id == employee.department_id:
+                    current_dept_name = dept.name
+                    break
+        
+        self.dept_var = tk.StringVar(value=current_dept_name)
+        self.dept_combobox = ttk.Combobox(frame, textvariable=self.dept_var, values=dept_names, state="readonly")
+        self.dept_combobox.grid(row=2, column=1, sticky=tk.EW, pady=4)
 
         btn_frame = ttk.Frame(frame)
         btn_frame.grid(row=3, column=0, columnspan=2, pady=12)
@@ -63,19 +77,20 @@ class _EmployeeDialog:
     def _save(self) -> None:
         user_id = self.id_var.get().strip()
         name = self.name_var.get().strip()
-        dept_text = self.dept_var.get().strip()
+        dept_name = self.dept_var.get().strip()
 
         if not user_id or not name:
             messagebox.showwarning("Validation", "User ID and Name are required.", parent=self.window)
             return
 
         department_id: Optional[int] = None
-        if dept_text:
-            try:
-                department_id = int(dept_text)
-            except ValueError:
-                messagebox.showwarning("Validation", "Department ID must be a number.", parent=self.window)
-                return
+        if dept_name:
+            # Find department ID from selected department name
+            departments = self.registry.all_departments()
+            for dept in departments:
+                if dept.name == dept_name:
+                    department_id = dept.department_id
+                    break
 
         if not self.employee and self.registry.get_employee(user_id):
             messagebox.showwarning("Validation", f"Employee {user_id} already exists.", parent=self.window)
@@ -150,6 +165,164 @@ class _DepartmentDialog:
         self.window.destroy()
 
 
+class _DepartmentDetailsDialog:
+    """Dialog for viewing department details and managing employees within the department."""
+    
+    def __init__(
+        self,
+        parent: tk.Toplevel,
+        registry: AttendanceRegistry,
+        department: Department,
+    ) -> None:
+        self.registry = registry
+        self.department = department
+        
+        self.window = tk.Toplevel(parent)
+        self.window.title(f"Department Details: {department.name}")
+        self.window.geometry("600x500")
+        self.window.transient(parent)
+        self.window.grab_set()
+        
+        self._build_ui()
+        self._refresh_employees()
+    
+    def _build_ui(self) -> None:
+        # Department info frame
+        info_frame = ttk.LabelFrame(self.window, text="Department Information", padding=12)
+        info_frame.pack(fill=tk.X, padx=8, pady=8)
+        
+        ttk.Label(info_frame, text="Department ID:").grid(row=0, column=0, sticky=tk.W, pady=4)
+        ttk.Label(info_frame, text=str(self.department.department_id)).grid(row=0, column=1, sticky=tk.W, pady=4)
+        
+        ttk.Label(info_frame, text="Name:").grid(row=1, column=0, sticky=tk.W, pady=4)
+        ttk.Label(info_frame, text=self.department.name).grid(row=1, column=1, sticky=tk.W, pady=4)
+        
+        # Employee count
+        employee_count = len(self._get_department_employees())
+        ttk.Label(info_frame, text="Employees:").grid(row=2, column=0, sticky=tk.W, pady=4)
+        ttk.Label(info_frame, text=str(employee_count)).grid(row=2, column=1, sticky=tk.W, pady=4)
+        
+        # Employees frame
+        emp_frame = ttk.LabelFrame(self.window, text="Employees in Department", padding=8)
+        emp_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        
+        # Employee list
+        emp_cols = ("Device User ID", "Name")
+        self.emp_tree = ttk.Treeview(emp_frame, columns=emp_cols, show="headings")
+        for col in emp_cols:
+            self.emp_tree.heading(col, text=col)
+            self.emp_tree.column(col, anchor="w")
+        self.emp_tree.pack(fill=tk.BOTH, expand=True)
+        
+        # Employee management buttons
+        emp_btn_frame = ttk.Frame(emp_frame)
+        emp_btn_frame.pack(fill=tk.X, pady=4)
+        ttk.Button(emp_btn_frame, text="Add Employee", command=self._add_employee_to_dept).pack(side=tk.LEFT, padx=2)
+        ttk.Button(emp_btn_frame, text="Remove Employee", command=self._remove_employee_from_dept).pack(side=tk.LEFT, padx=2)
+        
+        # Close button
+        close_frame = ttk.Frame(self.window)
+        close_frame.pack(fill=tk.X, padx=8, pady=8)
+        ttk.Button(close_frame, text="Close", command=self.window.destroy).pack(side=tk.RIGHT, padx=2)
+    
+    def _get_department_employees(self) -> list[Employee]:
+        """Get all employees belonging to this department."""
+        all_emps = self.registry.all_employees()
+        return [emp for emp in all_emps if emp.department_id == self.department.department_id]
+    
+    def _get_non_department_employees(self) -> list[Employee]:
+        """Get all employees not belonging to this department."""
+        all_emps = self.registry.all_employees()
+        return [emp for emp in all_emps if emp.department_id != self.department.department_id]
+    
+    def _refresh_employees(self) -> None:
+        """Refresh the employee list."""
+        # Clear tree
+        for item in self.emp_tree.get_children():
+            self.emp_tree.delete(item)
+        
+        # Add employees in this department
+        dept_emps = self._get_department_employees()
+        for emp in dept_emps:
+            self.emp_tree.insert("", tk.END, values=(emp.device_user_id, emp.name))
+    
+    def _add_employee_to_dept(self) -> None:
+        """Add an employee to this department."""
+        # Get employees not in this department
+        available_emps = self._get_non_department_employees()
+        if not available_emps:
+            messagebox.showinfo("Info", "No available employees to add.", parent=self.window)
+            return
+        
+        # Create selection dialog
+        dialog = tk.Toplevel(self.window)
+        dialog.title("Add Employee to Department")
+        dialog.geometry("400x300")
+        dialog.transient(self.window)
+        dialog.grab_set()
+        
+        ttk.Label(dialog, text="Select employee to add:").pack(pady=8)
+        
+        # Employee list
+        emp_cols = ("Device User ID", "Name", "Current Department")
+        emp_tree = ttk.Treeview(dialog, columns=emp_cols, show="headings")
+        for col in emp_cols:
+            emp_tree.heading(col, text=col)
+            emp_tree.column(col, anchor="w")
+        emp_tree.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        
+        # Get department names for display
+        departments = {dept.department_id: dept.name for dept in self.registry.all_departments()}
+        
+        # Populate tree
+        for emp in available_emps:
+            current_dept = departments.get(emp.department_id, "None") if emp.department_id else "None"
+            emp_tree.insert("", tk.END, values=(emp.device_user_id, emp.name, current_dept))
+        
+        def on_add():
+            selected = emp_tree.selection()
+            if not selected:
+                messagebox.showwarning("Selection", "Select an employee to add.", parent=dialog)
+                return
+            
+            values = emp_tree.item(selected[0], "values")
+            user_id = str(values[0])
+            employee = self.registry.get_employee(user_id)
+            
+            if employee:
+                # Update employee's department
+                updated_emp = replace(employee, department_id=self.department.department_id)
+                self.registry.upsert_employee(updated_emp)
+                self._refresh_employees()
+                dialog.destroy()
+        
+        def on_cancel():
+            dialog.destroy()
+        
+        btn_frame = ttk.Frame(dialog)
+        btn_frame.pack(fill=tk.X, padx=8, pady=8)
+        ttk.Button(btn_frame, text="Add", command=on_add).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side=tk.LEFT, padx=2)
+    
+    def _remove_employee_from_dept(self) -> None:
+        """Remove an employee from this department."""
+        selected = self.emp_tree.selection()
+        if not selected:
+            messagebox.showwarning("Selection", "Select an employee to remove.", parent=self.window)
+            return
+        
+        values = self.emp_tree.item(selected[0], "values")
+        user_id = str(values[0])
+        
+        if messagebox.askyesno("Confirm", f"Remove employee {user_id} from department?", parent=self.window):
+            employee = self.registry.get_employee(user_id)
+            if employee:
+                # Remove department assignment
+                updated_emp = replace(employee, department_id=None)
+                self.registry.upsert_employee(updated_emp)
+                self._refresh_employees()
+
+
 class ManagementDialog:
     """Top-level management window for employees and departments."""
 
@@ -187,7 +360,7 @@ class ManagementDialog:
         ttk.Button(emp_search_frame, text="Filter", command=self._filter_employees).pack(side=tk.LEFT, padx=2)
         ttk.Button(emp_search_frame, text="Clear", command=self._clear_employee_filter).pack(side=tk.LEFT, padx=2)
 
-        emp_cols = ("Device User ID", "Name", "Department ID")
+        emp_cols = ("Device User ID", "Name", "Department")
         self.emp_tree = ttk.Treeview(emp_frame, columns=emp_cols, show="headings")
         for col in emp_cols:
             self.emp_tree.heading(col, text=col, command=lambda _col=col: self._sort_tree(self.emp_tree, _col))
@@ -206,7 +379,7 @@ class ManagementDialog:
         dept_frame = ttk.Frame(notebook)
         notebook.add(dept_frame, text="Departments")
 
-        dept_cols = ("Department ID", "Name")
+        dept_cols = ("Department ID", "Name", "Employee Count")
         self.dept_tree = ttk.Treeview(dept_frame, columns=dept_cols, show="headings")
         for col in dept_cols:
             self.dept_tree.heading(col, text=col, command=lambda _col=col: self._sort_tree(self.dept_tree, _col))
@@ -218,6 +391,7 @@ class ManagementDialog:
         ttk.Button(dept_btn_frame, text="Add", command=self._add_department).pack(side=tk.LEFT, padx=2)
         ttk.Button(dept_btn_frame, text="Edit", command=self._edit_department).pack(side=tk.LEFT, padx=2)
         ttk.Button(dept_btn_frame, text="Delete", command=self._delete_department).pack(side=tk.LEFT, padx=2)
+        ttk.Button(dept_btn_frame, text="View Details", command=self._view_department_details).pack(side=tk.LEFT, padx=2)
 
         # Export buttons
         export_frame = ttk.Frame(self.window)
@@ -238,8 +412,8 @@ class ManagementDialog:
             val = tree.set(item, col)
             try:
                 return (0, float(val))
-            except ValueError:
-                return (1, val.lower())
+            except (ValueError, TypeError):
+                return (1, str(val).lower())
 
         items = sorted(tree.get_children(""), key=_key, reverse=reverse)
         for index, item in enumerate(items):
@@ -250,10 +424,18 @@ class ManagementDialog:
         if not self._employee_filter_query:
             return True
         q = self._employee_filter_query.lower()
+        
+        # Get department name for filtering
+        dept_name = ""
+        if emp.department_id is not None:
+            dept = self.registry.get_department(emp.department_id)
+            if dept:
+                dept_name = dept.name.lower()
+        
         return (
             q in emp.device_user_id.lower()
             or q in emp.name.lower()
-            or (emp.department_id is not None and q in str(emp.department_id).lower())
+            or q in dept_name
         )
 
     def _filter_employees(self) -> None:
@@ -267,18 +449,30 @@ class ManagementDialog:
 
     def _refresh_employees(self) -> None:
         self._clear(self.emp_tree)
+        departments = {dept.department_id: dept.name for dept in self.registry.all_departments()}
+        
         for emp in self.registry.all_employees():
             if self._matches_employee_query(emp):
+                dept_name = departments.get(emp.department_id, "") if emp.department_id else ""
                 self.emp_tree.insert(
                     "",
                     tk.END,
-                    values=(emp.device_user_id, emp.name, emp.department_id or ""),
+                    values=(emp.device_user_id, emp.name, dept_name),
                 )
 
     def _refresh_departments(self) -> None:
         self._clear(self.dept_tree)
+        
+        # Get employee count for each department
+        all_emps = self.registry.all_employees()
+        dept_counts = {}
+        for emp in all_emps:
+            if emp.department_id is not None:
+                dept_counts[emp.department_id] = dept_counts.get(emp.department_id, 0) + 1
+        
         for dept in self.registry.all_departments():
-            self.dept_tree.insert("", tk.END, values=(dept.department_id, dept.name))
+            emp_count = dept_counts.get(dept.department_id, 0)
+            self.dept_tree.insert("", tk.END, values=(dept.department_id, dept.name, emp_count))
 
     def _refresh(self) -> None:
         self._refresh_employees()
@@ -354,10 +548,36 @@ class ManagementDialog:
 
         values = self.dept_tree.item(selected[0], "values")
         dept_id = int(values[0])
+        
+        # Check if department has employees
+        dept_emps = [emp for emp in self.registry.all_employees() if emp.department_id == dept_id]
+        if dept_emps:
+            messagebox.showwarning(
+                "Cannot Delete", 
+                f"Department {dept_id} has {len(dept_emps)} employee(s). Remove employees from department first.",
+                parent=self.window
+            )
+            return
+        
         if messagebox.askyesno("Confirm", f"Delete department {dept_id}?", parent=self.window):
             self.registry.delete_department(dept_id)
             self._refresh()
             self._notify_change()
+
+    def _view_department_details(self) -> None:
+        selected = self.dept_tree.selection()
+        if not selected:
+            messagebox.showwarning("Selection", "Select a department to view details.", parent=self.window)
+            return
+
+        values = self.dept_tree.item(selected[0], "values")
+        dept_id = int(values[0])
+        department = self.registry.get_department(dept_id)
+        if not department:
+            return
+
+        _DepartmentDetailsDialog(self.window, self.registry, department)
+        self._refresh()  # Refresh in case employees were added/removed
 
     def _export_user_dat(self) -> None:
         path = filedialog.asksaveasfilename(
