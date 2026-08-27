@@ -8,7 +8,7 @@ This project consumes raw `.dat` attendance exports from a ZKTeco MB10-VL biomet
 
 > For each employee and calendar date, sort raw punches chronologically and alternate `IN`/`OUT` starting with `IN`.
 
-See `Docs/MB10-VL_Sequential_IN_OUT_Dev_Blueprint.md` for full requirements and `Docs/DTR_PDF_Generation.md` for PDF report documentation.
+See `Docs/MB10-VL_Sequential_IN_OUT_Dev_Blueprint.md` for full requirements, `Docs/DTR_PDF_Generation.md` for PDF report documentation, and `Docs/UI_Architecture.md` for UI component architecture details.
 
 ## Project Structure
 
@@ -22,7 +22,12 @@ src/
     processing/     Sequence logic
     output/         CSV and PDF writers
     cli/            Command-line entry point
-    ui/             Desktop tkinter interface
+    ui/             Desktop tkinter interface (modular components)
+      components/   Reusable UI components (toolbars, panels, dialogs)
+      views/        Data display components (treeviews, status panels)
+      dialogs/      Modal dialogs (management, selection, editing)
+      controller.py Business logic coordination
+      app.py        Main application orchestration
 
 tests/              Automated tests
 Docs/               Blueprint, status, and feature guides
@@ -71,6 +76,7 @@ The UI lets you open a `.dat` file, preview the raw records, process them into I
 - Duplicate punch handling (keeps first occurrence of same timestamp)
 - 4-punch mapping to time slots (IN AM, OUT AM, IN PM, OUT PM)
 - Dynamic employee/department selection for reports
+- **Modular UI architecture** for easy maintenance and future framework migration
 
 You can also import the device's `user.dat` to resolve employee names from numeric IDs and `department.dat` to build a department registry. Use **Manage Employees** to view, add, edit, or delete employees and departments, then export them back to the same ZKTeco/NGteco binary `user.dat` / `department.dat` formats for re-import into the device.
 
@@ -82,7 +88,7 @@ To build locally with PyInstaller:
 
 ```bash
 pip install -e ".[build]"
-pyinstaller --onefile --windowed --name LGUS-DAT scripts/gui_entry.py
+pyinstaller --onefile --windowed --name LGUS-DAT src/lgus_dat/ui/app.py
 ```
 
 The output will be in `dist/LGUS-DAT` (Linux) or `dist/LGUS-DAT.exe` (Windows).

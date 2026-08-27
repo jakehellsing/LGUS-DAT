@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.15.0`
+`v0.16.0`
 
 ### Status
 
-Added DTR PDF generation with excel-like monthly attendance reports, including duplicate punch handling, 4-punch time slot mapping, dynamic employee/department selection, and month picker for report generation.
+Completed major UI refactoring to modular component architecture, separating concerns into reusable components, views, dialogs, and a business logic controller. This improves maintainability, testability, and enables easier future UI framework migration while maintaining all existing functionality including DTR PDF generation.
 
 ### Implemented
 
@@ -44,6 +44,12 @@ Added DTR PDF generation with excel-like monthly attendance reports, including d
 - [x] Month picker for DTR report generation in GUI
 - [x] Dynamic employee/department selection dialog for PDF reports
 - [x] ReportLab integration for PDF generation
+- [x] Modular UI component architecture (`src/lgus_dat/ui/components/`)
+- [x] Separated UI views for data display (`src/lgus_dat/ui/views/`)
+- [x] Isolated modal dialogs (`src/lgus_dat/ui/dialogs/`)
+- [x] Business logic controller (`src/lgus_dat/ui/controller.py`)
+- [x] Reduced main app complexity from ~750 to ~465 lines
+- [x] Component-based UI for improved maintainability and testability
 
 ### In Progress
 
@@ -75,5 +81,6 @@ Added DTR PDF generation with excel-like monthly attendance reports, including d
 | v0.13.1 | 2026-08-19 | Hardcoded workcode to '1' in `attlog.dat` export for NGTeco software compatibility. Can be reverted if needed - see `src/lgus_dat/output/attlog_writer.py`. |
 | v0.14.0 | 2026-08-20 | Added time selection to date range filter for precise datetime filtering (HH:MM:SS format), color-coded status rows (IN=light blue, OUT=light yellow), and NGTeco-compatible `attlog.dat` export with workcode '1'. |
 | v0.15.0 | 2026-08-25 | Added DTR PDF generation with excel-like monthly attendance reports, duplicate punch handling, 4-punch time slot mapping, dynamic employee/department selection, and month picker for report generation. |
+| v0.16.0 | 2026-08-27 | Completed major UI refactoring to modular component architecture with separated concerns (components, views, dialogs, controller), reduced main app complexity by 38%, and improved maintainability for future UI framework migration. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

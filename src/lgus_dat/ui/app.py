@@ -1,194 +1,119 @@
-"""Tkinter desktop application for processing MB10-VL .DAT files."""
+"""Tkinter desktop application for processing MB10-VL .DAT files (Refactored)."""
 
 from __future__ import annotations
 
-import queue
 import sys
-import threading
 import tkinter as tk
-from dataclasses import replace
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from tkcalendar import DateEntry
 
 from lgus_dat.domain.attendance_record import AttendanceRecord, PunchStatus
-from lgus_dat.importers.department_parser import parse_department_dat
-from lgus_dat.importers.user_parser import parse_user_dat
-from lgus_dat.output.attlog_writer import write_attlog
-from lgus_dat.output.csv_writer import write_csv
-from lgus_dat.output.pdf_writer import generate_dtr_pdf, group_records_by_employee
-from lgus_dat.parser.dat_parser import ParsedRecord, parse_dat_file
+from lgus_dat.parser.dat_parser import ParsedRecord
 from lgus_dat.persistence.registry import AttendanceRegistry
-from lgus_dat.processing.sequence_processor import process_records
-from lgus_dat.ui.date_filter import filter_by_date
-from lgus_dat.ui.management_dialog import ManagementDialog
-from lgus_dat.ui.pdf_selection_dialog import DTRSelectionDialog
-from lgus_dat.ui.search_filter import filter_by_search
-
-
-class _ProgressDialog:
-    """Small modal progress window with an indeterminate progress bar."""
-
-    def __init__(self, parent: tk.Tk | tk.Toplevel, title: str = "Working...") -> None:
-        self.window = tk.Toplevel(parent)
-        self.window.title(title)
-        self.window.transient(parent)
-        self.window.resizable(False, False)
-        self.window.grab_set()
-
-        self.label = ttk.Label(self.window, text="Please wait...")
-        self.label.pack(pady=12)
-
-        self.bar = ttk.Progressbar(self.window, mode="indeterminate", length=300)
-        self.bar.pack(padx=20, pady=(0, 12))
-        self.bar.start(15)
-
-        self.window.update()
-
-    def set_text(self, text: str) -> None:
-        self.label.config(text=text)
-        self.window.update()
-
-    def close(self) -> None:
-        self.bar.stop()
-        self.window.destroy()
+from lgus_dat.ui.components.date_filter_panel import DateFilterPanel
+from lgus_dat.ui.components.file_toolbar import FileToolbar
+from lgus_dat.ui.components.pdf_report_panel import PDFReportPanel
+from lgus_dat.ui.components.progress_dialog import ProgressDialog
+from lgus_dat.ui.components.registry_toolbar import RegistryToolbar
+from lgus_dat.ui.components.search_panel import SearchPanel
+from lgus_dat.ui.controller import ProgressRunner, UIController
+from lgus_dat.ui.dialogs.management_dialog import ManagementDialog
+from lgus_dat.ui.dialogs.pdf_selection_dialog import DTRSelectionDialog
+from lgus_dat.ui.dialogs.status_edit_dialog import StatusEditDialog
+from lgus_dat.ui.views.input_preview import InputPreview
+from lgus_dat.ui.views.output_preview import OutputPreview
+from lgus_dat.ui.views.status_panel import StatusPanel
 
 
 class ProcessorApp:
+    """Main application class using modular UI components."""
+
     def __init__(self, root: tk.Tk, initial_file: Optional[Path] = None) -> None:
         self.root = root
         self.root.title("LGUS-DAT — MB10-VL Attendance Processor")
         self.root.geometry("1000x700")
         self.root.minsize(900, 600)
 
-        self.current_input_path: Optional[Path] = None
-        self.parsed_records: list[ParsedRecord] = []
-        self.all_processed_records: list[AttendanceRecord] = []
-        self.processed_records: list[AttendanceRecord] = []
-        self._filter_start: Optional[date] = None
-        self._filter_end: Optional[date] = None
-        self._search_query: str = ""
-        self._output_tree_records: dict[str, AttendanceRecord] = {}
+        # Initialize controller and state
         self.registry = AttendanceRegistry()
+        self.controller = UIController(self.registry)
+        self.progress_runner = ProgressRunner(root)
 
+        # Build UI with modular components
         self._build_ui()
-        self._update_registry_label()
-        self._update_logs_label()
+        self._update_labels()
 
+        # Load initial file if provided
         if initial_file:
             self.root.after(
                 100,
-                lambda: self._run_with_progress(
+                lambda: self.progress_runner.run_with_progress(
                     "Loading .DAT",
-                    lambda: self._load_file_sync(initial_file),
+                    lambda: self.controller.load_file(initial_file),
                     self._on_load_complete,
                 ),
             )
 
     def _build_ui(self) -> None:
-        # Toolbar
-        toolbar = ttk.Frame(self.root, padding=8)
-        toolbar.pack(fill=tk.X)
-
-        ttk.Button(toolbar, text="Open .DAT", command=self._open_file).pack(side=tk.LEFT, padx=(0, 4))
-        ttk.Button(toolbar, text="Process (F5)", command=self._process).pack(side=tk.LEFT, padx=4)
-        ttk.Button(toolbar, text="Process from DB", command=self._process_from_db).pack(side=tk.LEFT, padx=4)
-        ttk.Button(toolbar, text="Save CSV", command=self._save_csv).pack(side=tk.LEFT, padx=4)
-        ttk.Button(toolbar, text="Export attlog.dat", command=self._export_attlog).pack(side=tk.LEFT, padx=4)
-        ttk.Button(toolbar, text="Edit Status", command=self._edit_selected_status).pack(side=tk.LEFT, padx=4)
-
-        self.root.bind("<F5>", lambda _event: self._process())
-
-        registry_toolbar = ttk.Frame(self.root, padding=8)
-        registry_toolbar.pack(fill=tk.X)
-
-        ttk.Button(registry_toolbar, text="Import user.dat", command=self._import_user_dat).pack(side=tk.LEFT, padx=(0, 4))
-        ttk.Button(registry_toolbar, text="Import department.dat", command=self._import_department_dat).pack(side=tk.LEFT, padx=4)
-        ttk.Button(registry_toolbar, text="Manage Employees", command=self._open_management).pack(side=tk.LEFT, padx=4)
-
-        # Date range filter toolbar
-        filter_toolbar = ttk.LabelFrame(self.root, text="Date Range Filter", padding=8)
-        filter_toolbar.pack(fill=tk.X, padx=8, pady=(0, 4))
-
-        ttk.Label(filter_toolbar, text="Start:").pack(side=tk.LEFT)
-        self.start_date_var = tk.StringVar()
-        self.start_date_entry = DateEntry(
-            filter_toolbar,
-            textvariable=self.start_date_var,
-            width=12,
-            date_pattern="y-mm-dd",
+        """Build the UI using modular components."""
+        # File operations toolbar
+        self.file_toolbar = FileToolbar(
+            self.root,
+            on_open=self._open_file,
+            on_process=self._process,
+            on_process_from_db=self._process_from_db,
+            on_save_csv=self._save_csv,
+            on_export_attlog=self._export_attlog,
+            on_edit_status=self._edit_selected_status,
+            on_f5_process=self._process,
         )
-        self.start_date_entry.delete(0, tk.END)
-        self.start_date_entry.pack(side=tk.LEFT, padx=(4, 2))
-        
-        self.start_time_var = tk.StringVar()
-        self.start_time_entry = ttk.Entry(filter_toolbar, textvariable=self.start_time_var, width=8)
-        self.start_time_entry.pack(side=tk.LEFT, padx=(0, 8))
+        self.file_toolbar.pack(fill=tk.X)
+        self.file_toolbar.bind_f5(self.root)
 
-        ttk.Label(filter_toolbar, text="End:").pack(side=tk.LEFT)
-        self.end_date_var = tk.StringVar()
-        self.end_date_entry = DateEntry(
-            filter_toolbar,
-            textvariable=self.end_date_var,
-            width=12,
-            date_pattern="y-mm-dd",
+        # Registry operations toolbar
+        self.registry_toolbar = RegistryToolbar(
+            self.root,
+            on_import_user=self._import_user_dat,
+            on_import_department=self._import_department_dat,
+            on_manage_employees=self._open_management,
         )
-        self.end_date_entry.delete(0, tk.END)
-        self.end_date_entry.pack(side=tk.LEFT, padx=(4, 2))
-        
-        self.end_time_var = tk.StringVar()
-        self.end_time_entry = ttk.Entry(filter_toolbar, textvariable=self.end_time_var, width=8)
-        self.end_time_entry.pack(side=tk.LEFT, padx=(0, 8))
+        self.registry_toolbar.pack(fill=tk.X)
 
-        ttk.Button(filter_toolbar, text="Apply Filter", command=self._apply_date_filter).pack(side=tk.LEFT, padx=4)
-        ttk.Button(filter_toolbar, text="Clear", command=self._clear_date_filter).pack(side=tk.LEFT, padx=4)
-
-        # Search filter toolbar
-        search_toolbar = ttk.LabelFrame(self.root, text="Search Filter", padding=8)
-        search_toolbar.pack(fill=tk.X, padx=8, pady=(0, 4))
-
-        ttk.Label(search_toolbar, text="Search employee:").pack(side=tk.LEFT)
-        self.search_var = tk.StringVar()
-        ttk.Entry(search_toolbar, textvariable=self.search_var, width=24).pack(side=tk.LEFT, padx=(4, 8))
-        ttk.Button(search_toolbar, text="Search", command=self._apply_search_filter).pack(side=tk.LEFT, padx=4)
-        ttk.Button(search_toolbar, text="Clear", command=self._clear_search_filter).pack(side=tk.LEFT, padx=4)
-
-        # DTR PDF Report toolbar
-        pdf_toolbar = ttk.LabelFrame(self.root, text="DTR PDF Report", padding=8)
-        pdf_toolbar.pack(fill=tk.X, padx=8, pady=(0, 4))
-
-        ttk.Label(pdf_toolbar, text="Month:").pack(side=tk.LEFT)
-        self.report_month_var = tk.StringVar()
-        self.report_month_entry = DateEntry(
-            pdf_toolbar,
-            textvariable=self.report_month_var,
-            width=12,
-            date_pattern="y-mm-dd",
+        # Date filter panel
+        self.date_filter = DateFilterPanel(
+            self.root,
+            on_apply_filter=self._apply_date_filter,
+            on_clear_filter=self._clear_date_filter,
         )
-        self.report_month_entry.delete(0, tk.END)
-        self.report_month_entry.pack(side=tk.LEFT, padx=(4, 8))
+        self.date_filter.pack(fill=tk.X, padx=8, pady=(0, 4))
 
-        ttk.Button(pdf_toolbar, text="Generate DTR PDF", command=self._generate_dtr_pdf).pack(side=tk.LEFT, padx=4)
+        # Search panel
+        self.search_panel = SearchPanel(
+            self.root,
+            on_search=self._apply_search_filter,
+            on_clear=self._clear_search_filter,
+        )
+        self.search_panel.pack(fill=tk.X, padx=8, pady=(0, 4))
 
-        # File path label
+        # PDF report panel
+        self.pdf_panel = PDFReportPanel(
+            self.root,
+            on_generate_pdf=self._generate_dtr_pdf,
+        )
+        self.pdf_panel.pack(fill=tk.X, padx=8, pady=(0, 4))
+
+        # Information labels
         self.path_label = ttk.Label(self.root, text="No file selected", padding=8)
         self.path_label.pack(fill=tk.X)
 
-        self.registry_label = ttk.Label(
-            self.root,
-            text=f"Registry: {self.registry.db_path} — 0 employees",
-            padding=8,
-        )
+        self.registry_label = ttk.Label(self.root, text="Registry: Loading...", padding=8)
         self.registry_label.pack(fill=tk.X)
 
-        self.logs_label = ttk.Label(
-            self.root,
-            text="Stored logs: 0 rows",
-            padding=8,
-        )
+        self.logs_label = ttk.Label(self.root, text="Stored logs: Loading...", padding=8)
         self.logs_label.pack(fill=tk.X)
 
         # Notebook with input preview and output
@@ -198,383 +123,139 @@ class ProcessorApp:
         # Input preview tab
         input_frame = ttk.Frame(notebook)
         notebook.add(input_frame, text="Input Preview")
+        self.input_preview = InputPreview(input_frame)
+        self.input_preview.pack(fill=tk.BOTH, expand=True)
 
-        input_columns = ("Employee ID", "Employee Name", "Timestamp", "Original Record")
-        self.input_tree = ttk.Treeview(input_frame, columns=input_columns, show="headings")
-        for col in input_columns:
-            self.input_tree.heading(col, text=col)
-            self.input_tree.column(col, anchor="w")
-        self.input_tree.pack(fill=tk.BOTH, expand=True)
-
-        # Output tab
+        # Output preview tab
         output_frame = ttk.Frame(notebook)
         notebook.add(output_frame, text="Processed Output")
+        self.output_preview = OutputPreview(output_frame)
+        self.output_preview.pack(fill=tk.BOTH, expand=True)
 
-        output_columns = ("Employee ID", "Employee Name", "Date", "Time", "Timestamp", "Status", "Exception Flag")
-        self.output_tree = ttk.Treeview(output_frame, columns=output_columns, show="headings")
-        for col in output_columns:
-            self.output_tree.heading(col, text=col)
-            self.output_tree.column(col, anchor="w")
-        self.output_tree.pack(fill=tk.BOTH, expand=True)
+        # Status panel
+        self.status_panel = StatusPanel(self.root)
+        self.status_panel.pack(fill=tk.X, padx=8, pady=(0, 8))
 
-        # Status / errors
-        status_frame = ttk.LabelFrame(self.root, text="Status / Errors", padding=8)
-        status_frame.pack(fill=tk.X, padx=8, pady=(0, 8))
-
-        self.status_text = tk.Text(status_frame, height=6, wrap=tk.WORD, state=tk.DISABLED)
-        self.status_text.pack(fill=tk.BOTH, expand=True)
-
-    def _run_with_progress(
-        self,
-        title: str,
-        target: Callable[[], Any],
-        on_done: Callable[[Any], None],
-    ) -> None:
-        """Run target in a background thread and invoke on_done in the main thread."""
-        dialog = _ProgressDialog(self.root, title)
-        result_queue: queue.Queue[tuple[bool, Any]] = queue.Queue()
-
-        def worker() -> None:
-            try:
-                result = target()
-                result_queue.put((True, result))
-            except Exception as exc:
-                result_queue.put((False, exc))
-
-        def poll() -> None:
-            try:
-                success, result = result_queue.get_nowait()
-            except queue.Empty:
-                self.root.after(100, poll)
-                return
-
-            dialog.close()
-            if success:
-                on_done(result)
-            else:
-                messagebox.showerror("Error", str(result), parent=self.root)
-
-        threading.Thread(target=worker, daemon=True).start()
-        self.root.after(100, poll)
-
-    def _log(self, message: str) -> None:
-        self.status_text.config(state=tk.NORMAL)
-        self.status_text.insert(tk.END, f"{message}\n")
-        self.status_text.see(tk.END)
-        self.status_text.config(state=tk.DISABLED)
-
-    def _clear(self, tree: ttk.Treeview) -> None:
-        for item in tree.get_children():
-            tree.delete(item)
-
-    def _update_registry_label(self) -> None:
-        with self.registry._connection() as conn:
-            count = conn.execute("SELECT COUNT(*) FROM employees").fetchone()[0]
-        self.registry_label.config(text=f"Registry: {self.registry.db_path} — {count} employees")
-
-    def _update_logs_label(self) -> None:
-        count = self.registry.count_attendance_logs()
-        self.logs_label.config(text=f"Stored logs: {count} row(s) from {len(self.registry.get_attendance_log_sources())} source(s)")
-
-    def _parse_date_var(self, var: tk.StringVar) -> Optional[date]:
-        text = var.get().strip()
-        if not text:
-            return None
-        try:
-            return date.fromisoformat(text)
-        except ValueError:
-            messagebox.showwarning("Invalid date", f"'{text}' is not a valid YYYY-MM-DD date.")
-            return None
-
-    def _parse_datetime_var(self, date_var: tk.StringVar, time_var: tk.StringVar) -> Optional[datetime]:
-        date_text = date_var.get().strip()
-        time_text = time_var.get().strip()
+    def _update_labels(self) -> None:
+        """Update information labels."""
+        db_path, emp_count, log_count = self.controller.get_registry_info()
+        source_count = len(self.registry.get_attendance_log_sources())
         
-        if not date_text and not time_text:
-            return None
-        
-        try:
-            if date_text:
-                parsed_date = date.fromisoformat(date_text)
-            else:
-                parsed_date = date.today()
-            
-            if time_text:
-                parsed_time = datetime.strptime(time_text, "%H:%M:%S").time()
-                return datetime.combine(parsed_date, parsed_time)
-            else:
-                return datetime.combine(parsed_date, time.min)
-        except ValueError as e:
-            messagebox.showwarning("Invalid datetime", f"Invalid date/time format: {e}")
-            return None
-
-    def _refresh_filter_dates(self) -> bool:
-        start = self._parse_datetime_var(self.start_date_var, self.start_time_var)
-        if start is None and (self.start_date_var.get().strip() or self.start_time_var.get().strip()):
-            return False
-        end = self._parse_datetime_var(self.end_date_var, self.end_time_var)
-        if end is None and (self.end_date_var.get().strip() or self.end_time_var.get().strip()):
-            return False
-        self._filter_start, self._filter_end = start, end
-        return True
-
-    def _filtered_parsed_records(self) -> list[ParsedRecord]:
-        records = filter_by_date(
-            self.parsed_records,
-            lambda rec: rec.timestamp,
-            self._filter_start,
-            self._filter_end,
+        self.registry_label.config(
+            text=f"Registry: {db_path} — {emp_count} employees"
         )
-        return filter_by_search(
-            records,
-            self._search_query,
-            [
-                lambda rec: rec.employee_id,
-                lambda rec: self.registry.employee_name(rec.employee_id) or "",
-            ],
+        self.logs_label.config(
+            text=f"Stored logs: {log_count} row(s) from {source_count} source(s)"
         )
-
-    def _filtered_processed_records(self) -> list[AttendanceRecord]:
-        records = filter_by_date(
-            self.all_processed_records,
-            lambda rec: rec.timestamp,
-            self._filter_start,
-            self._filter_end,
-        )
-        return filter_by_search(
-            records,
-            self._search_query,
-            [
-                lambda rec: rec.employee_id,
-                lambda rec: rec.employee_name or "",
-            ],
-        )
-
-    def _refresh_input_tree(self) -> int:
-        self._clear(self.input_tree)
-        displayed = 0
-        for rec in self._filtered_parsed_records():
-            name = self.registry.employee_name(rec.employee_id) or ""
-            self.input_tree.insert(
-                "",
-                tk.END,
-                values=(
-                    rec.employee_id,
-                    name,
-                    rec.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                    rec.original_line,
-                ),
-            )
-            displayed += 1
-        return displayed
-
-    def _refresh_output_tree(self) -> int:
-        self._clear(self.output_tree)
-        self._output_tree_records.clear()
-        self.processed_records = self._filtered_processed_records()
-        
-        # Configure tags for status colors
-        self.output_tree.tag_configure("IN", background="#E3F2FD")  # Light blue
-        self.output_tree.tag_configure("OUT", background="#FFF9C4")  # Light yellow
-        
-        for rec in self.processed_records:
-            tag = "IN" if rec.status.value == "IN" else "OUT"
-            item = self.output_tree.insert(
-                "",
-                tk.END,
-                values=(
-                    rec.employee_id,
-                    rec.employee_name or "",
-                    rec.punch_date.isoformat(),
-                    rec.punch_time,
-                    rec.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                    rec.status.value,
-                    rec.exception_flag or "",
-                ),
-                tags=(tag,),
-            )
-            self._output_tree_records[item] = rec
-        return len(self.processed_records)
-
-    def _apply_date_filter(self) -> None:
-        if not self._refresh_filter_dates():
-            return
-        displayed_input = self._refresh_input_tree()
-        displayed_output = self._refresh_output_tree()
-        self._log(f"Filter applied: {displayed_input} input row(s), {displayed_output} output row(s).")
-
-    def _clear_date_filter(self) -> None:
-        self.start_date_var.set("")
-        self.start_time_var.set("")
-        self.end_date_var.set("")
-        self.end_time_var.set("")
-        self._filter_start = None
-        self._filter_end = None
-        self._apply_date_filter()
-
-    def _apply_search_filter(self) -> None:
-        self._search_query = self.search_var.get()
-        displayed_input = self._refresh_input_tree()
-        displayed_output = self._refresh_output_tree()
-        self._log(
-            f"Search applied for '{self._search_query}': "
-            f"{displayed_input} input row(s), {displayed_output} output row(s)."
-        )
-
-    def _clear_search_filter(self) -> None:
-        self.search_var.set("")
-        self._search_query = ""
-        self._apply_search_filter()
 
     def _open_file(self) -> None:
+        """Handle open file button click."""
         path = filedialog.askopenfilename(
             title="Select MB10-VL .DAT export",
             filetypes=[("DAT files", "*.dat"), ("All files", "*.*")],
         )
         if not path:
             return
-        self._run_with_progress(
+        
+        self.progress_runner.run_with_progress(
             "Loading .DAT",
-            lambda: self._load_file_sync(Path(path)),
+            lambda: self.controller.load_file(Path(path)),
             self._on_load_complete,
         )
 
-    def _load_file_sync(self, path: Path) -> tuple[Path, list[ParsedRecord], list[Any], int]:
-        records, errors = parse_dat_file(path)
-        new_count = 0
-        if records:
-            new_count = self.registry.import_attendance_logs(records, path)
-        return path, records, errors, new_count
-
     def _on_load_complete(self, result: tuple[Path, list[ParsedRecord], list[Any], int]) -> None:
+        """Handle file load completion."""
         path, records, errors, new_count = result
-        self.current_input_path = path
         self.path_label.config(text=str(path))
-        self._clear(self.input_tree)
-        self._clear(self.output_tree)
-        self.all_processed_records = []
-        self.processed_records = []
-        self.parsed_records = records
-        self._update_logs_label()
-        self._log(f"Opened {path}")
+        
+        # Update input preview
+        displayed = self.input_preview.load_records(
+            records,
+            name_lookup=self.controller.get_employee_name,
+        )
+        
+        # Clear output preview
+        self.output_preview.clear()
+        
+        self.status_panel.log(f"Opened {path}")
         if records:
-            self._log(f"Saved {new_count} new log row(s) to local DB ({len(records)} total in file).")
-
-        displayed = self._refresh_input_tree()
+            self.status_panel.log(f"Saved {new_count} new log row(s) to local DB ({len(records)} total in file).")
 
         if errors:
-            self._log(f"Found {len(errors)} parse error(s):")
+            self.status_panel.log(f"Found {len(errors)} parse error(s):")
             for err in errors:
-                self._log(str(err))
+                self.status_panel.log(str(err))
         else:
-            self._log(f"Parsed {len(records)} record(s) successfully. {displayed} shown with current filter.")
+            self.status_panel.log(f"Parsed {len(records)} record(s) successfully. {displayed} shown with current filter.")
+        
+        self._update_labels()
 
     def _process(self) -> None:
-        if not self.parsed_records:
+        """Handle process button click."""
+        if not self.controller.state.parsed_records:
             messagebox.showwarning("No data", "Open a .DAT file first.")
             return
 
-        self.all_processed_records = process_records(
-            self.parsed_records,
-            name_lookup=self.registry.employee_name,
-        )
-
-        displayed = self._refresh_output_tree()
-        self._log(f"Processed {len(self.all_processed_records)} record(s). {displayed} shown with current filter.")
+        self.controller.process_records()
+        
+        # Update output preview
+        displayed = self.output_preview.load_records(self.controller.state.processed_records)
+        self.status_panel.log(f"Processed {len(self.controller.state.all_processed_records)} record(s). {displayed} shown with current filter.")
 
     def _process_from_db(self) -> None:
-        def load_logs() -> list[ParsedRecord]:
-            return self.registry.get_attendance_logs()
-
-        self._run_with_progress(
+        """Handle process from DB button click."""
+        self.progress_runner.run_with_progress(
             "Loading logs from DB",
-            load_logs,
+            self.controller.load_from_db,
             self._on_process_from_db_complete,
         )
 
     def _on_process_from_db_complete(self, logs: list[ParsedRecord]) -> None:
+        """Handle process from DB completion."""
         if not logs:
             messagebox.showwarning("No logs", "No attendance logs stored in the local DB. Import a .DAT file first.")
             return
 
-        self.current_input_path = None
         self.path_label.config(text="<all stored logs>")
-        self.parsed_records = logs
-
-        displayed_input = self._refresh_input_tree()
-        self._process()
-        self._log(f"Loaded {len(logs)} log row(s) from DB. {displayed_input} shown with current filter.")
-
-    def _edit_status_dialog(self, current: PunchStatus) -> Optional[PunchStatus]:
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Edit Status")
-        dialog.geometry("250x120")
-        dialog.transient(self.root)
-        dialog.grab_set()
-
-        ttk.Label(dialog, text="Select status:").pack(pady=(12, 4))
-        status_var = tk.StringVar(value=current.value)
-        combo = ttk.Combobox(
-            dialog,
-            textvariable=status_var,
-            values=[PunchStatus.IN.value, PunchStatus.OUT.value],
-            state="readonly",
+        
+        # Update input preview
+        displayed_input = self.input_preview.load_records(
+            logs,
+            name_lookup=self.controller.get_employee_name,
         )
-        combo.pack(pady=4)
-
-        result: Optional[PunchStatus] = None
-
-        def ok() -> None:
-            nonlocal result
-            try:
-                result = PunchStatus(status_var.get())
-            except ValueError:
-                result = None
-            dialog.destroy()
-
-        def cancel() -> None:
-            dialog.destroy()
-
-        button_frame = ttk.Frame(dialog, padding=8)
-        button_frame.pack()
-        ttk.Button(button_frame, text="OK", command=ok).pack(side=tk.LEFT, padx=4)
-        ttk.Button(button_frame, text="Cancel", command=cancel).pack(side=tk.LEFT, padx=4)
-
-        self.root.wait_window(dialog)
-        return result
+        
+        # Process the records
+        self._process()
+        
+        self.status_panel.log(f"Loaded {len(logs)} log row(s) from DB. {displayed_input} shown with current filter.")
 
     def _edit_selected_status(self) -> None:
-        selected = self.output_tree.selection()
-        if not selected:
+        """Handle edit status button click."""
+        selected_record = self.output_preview.get_selected_record()
+        if not selected_record:
             messagebox.showwarning("No selection", "Select a processed output row to edit its status.")
             return
 
-        item = selected[0]
-        record = self._output_tree_records.get(item)
-        if record is None:
+        dialog = StatusEditDialog(self.root, selected_record.status)
+        new_status = dialog.get_result()
+        
+        if new_status is None or new_status == selected_record.status:
             return
 
-        new_status = self._edit_status_dialog(record.status)
-        if new_status is None or new_status == record.status:
-            return
-
-        edited = replace(record, status=new_status, exception_flag="MANUAL_EDIT")
-        try:
-            index = self.all_processed_records.index(record)
-            self.all_processed_records[index] = edited
-        except ValueError:
-            self._log(f"Could not update {record.employee_id} — original row not found.")
-            return
-
-        self._refresh_output_tree()
-        self._log(
-            f"Manual edit: {record.employee_id} at "
-            f"{record.timestamp.strftime('%Y-%m-%d %H:%M:%S')} changed from "
-            f"{record.status.value} to {edited.status.value}"
-        )
+        edited = self.controller.edit_record_status(selected_record, new_status)
+        if edited:
+            self.output_preview.update_record(selected_record, edited)
+            self.status_panel.log(
+                f"Manual edit: {selected_record.employee_id} at "
+                f"{selected_record.timestamp.strftime('%Y-%m-%d %H:%M:%S')} changed from "
+                f"{selected_record.status.value} to {edited.status.value}"
+            )
+        else:
+            self.status_panel.log(f"Could not update {selected_record.employee_id} — original row not found.")
 
     def _save_csv(self) -> None:
-        if not self.processed_records:
+        """Handle save CSV button click."""
+        if not self.controller.state.processed_records:
             messagebox.showwarning("No output", "Process a file first or adjust the date filter.")
             return
 
@@ -585,11 +266,12 @@ class ProcessorApp:
         if not path:
             return
 
-        write_csv(self.processed_records, Path(path))
-        self._log(f"Saved {len(self.processed_records)} filtered row(s) to {path}")
+        count = self.controller.save_csv(Path(path))
+        self.status_panel.log(f"Saved {count} filtered row(s) to {path}")
 
     def _export_attlog(self) -> None:
-        if not self.processed_records:
+        """Handle export attlog button click."""
+        if not self.controller.state.processed_records:
             messagebox.showwarning("No output", "Process a file first or adjust the date filter.")
             return
 
@@ -600,101 +282,89 @@ class ProcessorApp:
         if not path:
             return
 
-        write_attlog(self.processed_records, Path(path))
-        self._log(f"Exported {len(self.processed_records)} row(s) to {path}")
+        count = self.controller.export_attlog(Path(path))
+        self.status_panel.log(f"Exported {count} row(s) to {path}")
 
-    def _open_management(self) -> None:
-        ManagementDialog(self.root, self.registry, on_change=self._update_registry_label)
-
-    def _import_user_dat(self) -> None:
-        path = filedialog.askopenfilename(
-            title="Select user.dat",
-            filetypes=[("DAT files", "*.dat"), ("All files", "*.*")],
-        )
-        if not path:
+    def _apply_date_filter(self) -> None:
+        """Handle apply date filter button click."""
+        start = self.date_filter.get_start_datetime()
+        end = self.date_filter.get_end_datetime()
+        
+        if (start is None and self.date_filter.start_date_var.get().strip()) or \
+           (end is None and self.date_filter.end_date_var.get().strip()):
+            messagebox.showwarning("Invalid datetime", "Invalid date/time format.")
             return
 
-        def import_sync() -> tuple[list[Any], list[Any], int]:
-            employees, errors = parse_user_dat(Path(path))
-            if errors:
-                return employees, errors, 0
-            count = self.registry.import_employees(employees)
-            return employees, errors, count
+        input_count, output_count = self.controller.apply_date_filter(start, end)
+        
+        # Update previews
+        self.input_preview.load_records(
+            self.controller._get_filtered_parsed_records(),
+            name_lookup=self.controller.get_employee_name,
+        )
+        self.output_preview.load_records(self.controller.state.processed_records)
+        
+        self.status_panel.log(f"Filter applied: {input_count} input row(s), {output_count} output row(s).")
 
-        self._run_with_progress(
-            "Importing user.dat",
-            import_sync,
-            lambda result: self._on_import_user_complete(path, result),
+    def _clear_date_filter(self) -> None:
+        """Handle clear date filter button click."""
+        input_count, output_count = self.controller.clear_filters()
+        
+        # Update previews
+        self.input_preview.load_records(
+            self.controller._get_filtered_parsed_records(),
+            name_lookup=self.controller.get_employee_name,
+        )
+        self.output_preview.load_records(self.controller.state.processed_records)
+        
+        self.status_panel.log(f"Filter cleared: {input_count} input row(s), {output_count} output row(s).")
+
+    def _apply_search_filter(self) -> None:
+        """Handle apply search filter button click."""
+        query = self.search_panel.get_search_query()
+        input_count, output_count = self.controller.apply_search_filter(query)
+        
+        # Update previews
+        self.input_preview.load_records(
+            self.controller._get_filtered_parsed_records(),
+            name_lookup=self.controller.get_employee_name,
+        )
+        self.output_preview.load_records(self.controller.state.processed_records)
+        
+        self.status_panel.log(
+            f"Search applied for '{query}': "
+            f"{input_count} input row(s), {output_count} output row(s)."
         )
 
-    def _on_import_user_complete(self, path: str, result: tuple[list[Any], list[Any], int]) -> None:
-        _employees, errors, count = result
-        if errors:
-            self._log(f"user.dat import errors: {len(errors)}")
-            for err in errors:
-                self._log(str(err))
-
-        self._update_registry_label()
-        self._log(f"Imported {count} employee(s) from {path}")
-
-    def _import_department_dat(self) -> None:
-        path = filedialog.askopenfilename(
-            title="Select department.dat",
-            filetypes=[("DAT files", "*.dat"), ("All files", "*.*")],
+    def _clear_search_filter(self) -> None:
+        """Handle clear search filter button click."""
+        input_count, output_count = self.controller.clear_filters()
+        
+        # Update previews
+        self.input_preview.load_records(
+            self.controller._get_filtered_parsed_records(),
+            name_lookup=self.controller.get_employee_name,
         )
-        if not path:
-            return
-
-        def import_sync() -> tuple[list[Any], list[Any], int]:
-            departments, errors = parse_department_dat(Path(path))
-            if errors:
-                return departments, errors, 0
-            count = self.registry.import_departments(departments)
-            return departments, errors, count
-
-        self._run_with_progress(
-            "Importing department.dat",
-            import_sync,
-            lambda result: self._on_import_department_complete(path, result),
-        )
-
-    def _on_import_department_complete(self, path: str, result: tuple[list[Any], list[Any], int]) -> None:
-        _departments, errors, count = result
-        if errors:
-            self._log(f"department.dat import errors: {len(errors)}")
-            for err in errors:
-                self._log(str(err))
-
-        self._log(f"Imported {count} department(s) from {path}")
+        self.output_preview.load_records(self.controller.state.processed_records)
+        
+        self.status_panel.log(f"Search cleared: {input_count} input row(s), {output_count} output row(s).")
 
     def _generate_dtr_pdf(self) -> None:
-        if not self.all_processed_records:
+        """Handle generate DTR PDF button click."""
+        if not self.controller.state.all_processed_records:
             messagebox.showwarning("No data", "Process attendance data first.")
             return
 
         # Get month from picker
-        month_text = self.report_month_var.get().strip()
-        if not month_text:
+        report_date = self.pdf_panel.get_selected_month()
+        if not report_date:
             messagebox.showwarning("No month", "Please select a month for the DTR report.")
-            return
-
-        try:
-            report_date = date.fromisoformat(month_text)
-        except ValueError:
-            messagebox.showwarning("Invalid date", f"'{month_text}' is not a valid YYYY-MM-DD date.")
             return
 
         # Show selection dialog
         dialog = DTRSelectionDialog(self.root, self.registry)
         if dialog.result is None:
             return  # User cancelled
-
-        # Filter records based on selection
-        filtered_records = self._filter_records_for_dtr(dialog.result, self.all_processed_records)
-
-        if not filtered_records:
-            messagebox.showwarning("No data", "No attendance records found for the selected criteria.")
-            return
 
         # Generate PDF
         path = filedialog.asksaveasfilename(
@@ -705,56 +375,81 @@ class ProcessorApp:
         if not path:
             return
 
-        def generate_sync() -> tuple[str, int]:
-            # Get employee names and department info
-            employee_names = {emp.device_user_id: emp.name for emp in self.registry.all_employees()}
-            department_names = {dept.department_id: dept.name for dept in self.registry.all_departments()}
-            employee_departments = {emp.device_user_id: emp.department_id for emp in self.registry.all_employees() if emp.department_id is not None}
+        def generate_sync():
+            return self.controller.generate_dtr_pdf(dialog.result, report_date, Path(path))
 
-            # Group records by employee
-            grouped = group_records_by_employee(filtered_records)
-
-            generate_dtr_pdf(
-                employee_records=grouped,
-                month=report_date,
-                output_path=Path(path),
-                employee_names=employee_names,
-                department_names=department_names,
-                employee_departments=employee_departments,
-            )
-            return path, len(filtered_records)
-
-        self._run_with_progress(
+        self.progress_runner.run_with_progress(
             "Generating DTR PDF",
             generate_sync,
             lambda result: self._on_dtr_pdf_complete(result, report_date),
         )
 
-    def _filter_records_for_dtr(self, selection: dict, records: list[AttendanceRecord]) -> list[AttendanceRecord]:
-        """Filter attendance records based on DTR selection dialog result."""
-        mode = selection["mode"]
-        
-        if mode == "all":
-            return records
-        
-        filtered = []
-        if mode == "employees":
-            employee_ids = set(selection["employee_ids"])
-            filtered = [r for r in records if r.employee_id in employee_ids]
-        elif mode == "departments":
-            department_ids = set(selection["department_ids"])
-            # Get employees in selected departments
-            employee_ids = set()
-            for emp in self.registry.all_employees():
-                if emp.department_id in department_ids:
-                    employee_ids.add(emp.device_user_id)
-            filtered = [r for r in records if r.employee_id in employee_ids]
-        
-        return filtered
-
     def _on_dtr_pdf_complete(self, result: tuple[str, int], report_date: date) -> None:
+        """Handle DTR PDF generation completion."""
         path, count = result
-        self._log(f"Generated DTR PDF for {report_date.strftime('%B %Y')}: {count} record(s) saved to {path}")
+        self.status_panel.log(f"Generated DTR PDF for {report_date.strftime('%B %Y')}: {count} record(s) saved to {path}")
+
+    def _open_management(self) -> None:
+        """Handle manage employees button click."""
+        ManagementDialog(self.root, self.registry, on_change=self._update_labels)
+
+    def _import_user_dat(self) -> None:
+        """Handle import user.dat button click."""
+        path = filedialog.askopenfilename(
+            title="Select user.dat",
+            filetypes=[("DAT files", "*.dat"), ("All files", "*.*")],
+        )
+        if not path:
+            return
+
+        def import_sync():
+            return self.controller.import_user_dat(Path(path))
+
+        self.progress_runner.run_with_progress(
+            "Importing user.dat",
+            import_sync,
+            lambda result: self._on_import_user_complete(path, result),
+        )
+
+    def _on_import_user_complete(self, path: str, result: tuple[list[Any], list[Any], int]) -> None:
+        """Handle user.dat import completion."""
+        _employees, errors, count = result
+        if errors:
+            self.status_panel.log(f"user.dat import errors: {len(errors)}")
+            for err in errors:
+                self.status_panel.log(str(err))
+
+        self._update_labels()
+        self.status_panel.log(f"Imported {count} employee(s) from {path}")
+
+    def _import_department_dat(self) -> None:
+        """Handle import department.dat button click."""
+        path = filedialog.askopenfilename(
+            title="Select department.dat",
+            filetypes=[("DAT files", "*.dat"), ("All files", "*.*")],
+        )
+        if not path:
+            return
+
+        def import_sync():
+            return self.controller.import_department_dat(Path(path))
+
+        self.progress_runner.run_with_progress(
+            "Importing department.dat",
+            import_sync,
+            lambda result: self._on_import_department_complete(path, result),
+        )
+
+    def _on_import_department_complete(self, path: str, result: tuple[list[Any], list[Any], int]) -> None:
+        """Handle department.dat import completion."""
+        _departments, errors, count = result
+        if errors:
+            self.status_panel.log(f"department.dat import errors: {len(errors)}")
+            for err in errors:
+                self.status_panel.log(str(err))
+
+        self.status_panel.log(f"Imported {count} department(s) from {path}")
+
 
 def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]

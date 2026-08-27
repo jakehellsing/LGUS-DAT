@@ -225,13 +225,18 @@ class DTRSelectionDialog:
             self.result = {"mode": "all"}
         elif mode == "employees":
             if not self.selected_employees:
-                messagebox.showwarning("No Selection", "Please select at least one employee.", parent=self.window)
+                self._show_warning("No Selection", "Please select at least one employee.")
                 return
             self.result = {"mode": "employees", "employee_ids": list(self.selected_employees)}
         elif mode == "departments":
             if not self.selected_departments:
-                messagebox.showwarning("No Selection", "Please select at least one department.", parent=self.window)
+                self._show_warning("No Selection", "Please select at least one department.")
                 return
             self.result = {"mode": "departments", "department_ids": list(self.selected_departments)}
+
+    def _show_warning(self, title: str, message: str) -> None:
+        """Show a warning message box."""
+        from tkinter import messagebox
+        messagebox.showwarning(title, message, parent=self.window)
         
         self.window.destroy()
