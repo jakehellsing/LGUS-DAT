@@ -14,6 +14,11 @@ class DesktopController:
     def __init__(self) -> None:
         self.registry = AttendanceRegistry()
         self.ui = UIController(self.registry)
+        self._load_stored_logs()
+
+    def _load_stored_logs(self) -> None:
+        """Load any previously imported attendance logs from the registry."""
+        self.ui.load_from_db()
 
     def load_attendance(self, path: Path) -> tuple[Path, list, list, int]:
         """Load an attendance .dat file and return parsed records and errors."""

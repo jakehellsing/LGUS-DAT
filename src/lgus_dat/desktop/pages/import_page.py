@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLineEdit,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -63,10 +65,25 @@ class ImportPage(QWidget):
 
         # Process action
         process_layout = QHBoxLayout()
-        process_btn = QPushButton("Process Records")
+        process_layout.setSpacing(12)
+
+        process_label = QLabel("Process for month:")
+        process_layout.addWidget(process_label)
+
+        self.month_edit = QLineEdit()
+        self.month_edit.setPlaceholderText("YYYY-MM")
+        self.month_edit.setMaximumWidth(100)
+        process_layout.addWidget(self.month_edit)
+
+        process_btn = QPushButton("Process")
         process_btn.setStyleSheet("font-weight: bold;")
         process_btn.clicked.connect(self._process)
         process_layout.addWidget(process_btn)
+
+        process_all_btn = QPushButton("Process All")
+        process_all_btn.clicked.connect(self._process_all)
+        process_layout.addWidget(process_all_btn)
+
         process_layout.addStretch()
         layout.addLayout(process_layout)
 
@@ -130,6 +147,31 @@ class ImportPage(QWidget):
 
     def _process(self) -> None:
         if not self.controller.ui.state.parsed_records:
+            QMessageBox.warning(self, "No Data", "Import an attendance .dat file first.")
+            return
+
+        month_text = self.month_edit.text().strip()
+        try:
+            year, month = map(int, month_text.split("-"))
+        except ValueError:
+            QMessageBox.warning(self, "Invalid Month", "Enter month as YYYY-MM.")
+            return
+
+        filtered = [
+            rec for rec in self.controller.ui.state.parsed_records
+            if rec.timestamp.year == year and rec.timestamp.month == month
+        ]
+
+        if not filtered:
+            QMessageBox.information(self, "No Records", f"No records found for {month_text}.")
+            return
+
+        self.controller.ui.process_records(filtered)
+        self.process_requested.emit()
+
+    def _process_all(self) -> None:
+        if not self.controller.ui.state.parsed_records:
+            QMessageBox.warning(self, "No Data", "Import an attendance .dat file first.")
             return
         self.controller.ui.process_records()
         self.process_requested.emit()
