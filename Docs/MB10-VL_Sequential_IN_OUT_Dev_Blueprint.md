@@ -2,9 +2,18 @@
 
 ## 1. Project Objective
 
-Build a small, reliable attendance-processing application that consumes
-raw `.dat` attendance exports from a ZKTeco MB10-VL biometric terminal
-and assigns attendance status by punch sequence.
+Build an HR-focused attendance management and DTR (Daily Time Record)
+generation application that consumes raw `.dat` attendance exports from a
+ZKTeco MB10-VL biometric terminal and assigns attendance status by punch
+sequence.
+
+The application stores imported attendance data, employee records, and
+department records in a local persistence layer so that data does not
+need to be re-imported on every launch. HR users can process attendance,
+filter and search records, and generate printable DTR reports or exports
+for payroll and record-keeping.
+
+The required business rule is:
 
 The required business rule is:
 
@@ -384,10 +393,28 @@ src/
   output/
     csv_writer
     dat_writer (if required)
+    pdf_writer
   cli/
     commands
+  ui/                  # Existing Tkinter UI (kept during migration)
+    app.py
+    components/
+    dialogs/
+    views/
+  desktop/             # New PySide6 UI
+    app.py
+    main_window.py
+    pages/
+    widgets/
+    theme.py
+  persistence/
+    registry
   tests/
 ```
+
+The `ui/` (Tkinter) package is kept in parallel until the PySide6
+`desktop/` package fully replaces it. The parser, domain, processing,
+and output layers should remain unchanged.
 
 The exact programming language/framework is up to the developer unless
 the surrounding project already dictates one.
@@ -610,6 +637,11 @@ The project is considered successful when:
 13. Automated tests cover the core rules.
 14. The processor can produce a clean output suitable for integration
     with the existing attendance/payroll system.
+15. The PySide6 desktop UI is functional and visually modern.
+16. Imported data persists across application restarts.
+17. The application provides printable DTR reports and export options.
+18. The UI supports a manual light/dark theme toggle.
+19. Dashboard KPIs display useful summary metrics.
 
 ------------------------------------------------------------------------
 
@@ -650,3 +682,135 @@ of preserving the original `.dat` records.
 
 Before implementing assumptions about fields 4--7 of the `.dat` format,
 inspect additional real MB10-VL exports and confirm their meaning.
+
+------------------------------------------------------------------------
+
+## 21. Application Scope (Updated)
+
+The application is intended primarily for HR staff. Its daily workflow is:
+
+1.  Import attendance `.dat` files exported from the MB10-VL device.
+2.  Optionally import `user.dat` and `department.dat` files.
+3.  Process imported attendance records to assign `IN`/`OUT` statuses.
+4.  Filter, search, and review processed records.
+5.  Generate printable DTR (Daily Time Record) reports or export data for
+    payroll and record-keeping.
+
+Imported attendance data, employee data, and department data are stored
+in a local persistence layer. Re-opening the application should not
+require re-importing files that have already been loaded once, unless the
+underlying data has changed.
+
+------------------------------------------------------------------------
+
+## 22. User Interface Architecture
+
+The desktop user interface is being rebuilt in **PySide6** to provide a
+modern dashboard-style experience with manual light/dark theme toggling.
+
+### Framework
+
+-   **PySide6** for the desktop UI (LGPL, compatible with distribution)
+-   Existing **Tkinter** UI is kept in parallel during the migration
+-   **PyInstaller** for the final packaged executable
+-   Core parser, processor, and persistence layers remain unchanged
+
+### UI Layout
+
+``` text
+Main Window
+|-- Sidebar navigation
+|   |-- Dashboard
+|   |-- Import
+|   |-- Processed Records
+|   |-- Reports
+|   |-- Employees
+|   |-- Settings
+|
+|-- Content area (stacked pages)
+|   |-- Dashboard page: KPI cards and quick actions
+|   |-- Import page: file import and raw input preview
+|   |-- Processed Records page: IN/OUT output, filters, search
+|   |-- Reports page: DTR PDF, CSV, attlog export
+|   |-- Employees page: employee and department management
+|
+|-- Status bar
+```
+
+### Theme
+
+-   Manual light/dark mode toggle in the main window or settings
+-   Theme state persisted in user settings
+-   All custom widgets and pages respect the active theme
+
+### Search and Filter Behavior
+
+-   Search is triggered by a button click (not real-time typing)
+-   Date and time filters use `QDateEdit` and `QTimeEdit` pickers
+-   Filters apply to both input and processed record views
+-   Name lookup is cached in memory to avoid repeated database access
+
+------------------------------------------------------------------------
+
+## 23. Dashboard KPIs
+
+The dashboard page should display summary cards for at least the
+following metrics:
+
+-   Total employees
+-   Total attendance records imported
+-   Total processed records
+-   Unpaired `IN` records (odd punch counts)
+-   Parse/import errors (if any)
+-   Selected month for DTR report
+
+Additional KPIs may be added as the project evolves.
+
+------------------------------------------------------------------------
+
+## 24. Performance Targets
+
+The PySide6 UI should be more responsive than the previous Tkinter
+implementation. Specific targets include:
+
+-   Cached employee name lookups during filtering and display
+-   `QTableView` with `QAbstractTableModel` for large record lists
+-   Debounced or button-triggered search to avoid re-filtering on every
+    keystroke
+-   Only re-apply filters when the query or filter values change
+-   Progress dialogs for long-running operations (import, process,
+    export, report generation)
+
+------------------------------------------------------------------------
+
+## 25. Migration Plan
+
+The migration from Tkinter to PySide6 is executed in the following
+phases. The Tkinter UI is kept in parallel until the PySide6 UI is
+complete.
+
+| Phase | Work | Deliverable |
+|-------|------|-------------|
+| 0     | Add PySide6 dependency and create `desktop/` package | Basic working PySide6 window |
+| 1     | Build dashboard shell: sidebar, stacked pages, theme | Navigable skeleton with light/dark mode |
+| 2     | Port import and input preview | Can import `.dat` and view raw records |
+| 3     | Port processing, filters, search | Full process and filter workflow |
+| 4     | Port reports and exports | DTR PDF, CSV, attlog export working |
+| 5     | Port employee/department management | Management dialogs and pages |
+| 6     | Polish: KPI cards, charts, packaging | Final modern app |
+| 7     | Remove Tkinter UI and update docs | Clean repo, only PySide6 UI |
+
+------------------------------------------------------------------------
+
+## 26. Future Considerations (Updated)
+
+The following features are out of scope for the initial redesign but
+may be added as the project evolves:
+
+-   Real-time search as the user types
+-   Data visualization charts (charts and trends)
+-   Automatic sync with the device
+-   Multi-terminal support
+-   Web-based or mobile companion
+-   Advanced payroll export formats
+-   Shift schedules and overtime rules

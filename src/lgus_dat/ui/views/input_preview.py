@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from lgus_dat.parser.dat_parser import ParsedRecord
 
@@ -29,13 +29,13 @@ class InputPreview(ttk.Treeview):
     def load_records(
         self,
         records: list[ParsedRecord],
-        name_lookup: Optional[dict[str, str]] = None,
+        name_lookup: Optional[dict[str, str] | Callable[[str], Optional[str]]] = None,
     ) -> int:
         """Load records into the treeview.
         
         Args:
             records: List of parsed attendance records
-            name_lookup: Optional dictionary mapping employee IDs to names
+            name_lookup: Optional dictionary or callable function mapping employee IDs to names
             
         Returns:
             Number of records displayed
@@ -43,11 +43,17 @@ class InputPreview(ttk.Treeview):
         self.clear()
         self._record_map.clear()
         
-        name_lookup = name_lookup or {}
         displayed = 0
         
         for rec in records:
-            name = name_lookup.get(rec.employee_id, "")
+            # Handle both dict and callable name_lookup
+            if name_lookup is None:
+                name = ""
+            elif callable(name_lookup):
+                name = name_lookup(rec.employee_id) or ""
+            else:
+                name = name_lookup.get(rec.employee_id, "")
+            
             item = self.insert(
                 "",
                 tk.END,

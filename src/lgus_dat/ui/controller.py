@@ -177,12 +177,13 @@ class UIController:
             self.state.filter_start,
             self.state.filter_end,
         )
+        # For processed records, use the stored employee_name if available, otherwise look it up
         filtered_processed = filter_by_search(
             filtered_processed,
             self.state.search_query,
             [
                 lambda rec: rec.employee_id,
-                lambda rec: rec.employee_name or "",
+                lambda rec: rec.employee_name if rec.employee_name else self.registry.employee_name(rec.employee_id) or "",
             ],
         )
         

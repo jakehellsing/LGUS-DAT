@@ -196,23 +196,40 @@ class ProcessorApp:
             messagebox.showwarning("No data", "Open a .DAT file first.")
             return
 
-        self.controller.process_records()
-        
+        def process_sync():
+            return self.controller.process_records()
+
+        self.progress_runner.run_with_progress(
+            "Processing attendance data",
+            process_sync,
+            self._on_process_complete,
+        )
+
+    def _on_process_complete(self, result: list[AttendanceRecord]) -> None:
+        """Handle process completion."""
         # Update output preview
         displayed = self.output_preview.load_records(self.controller.state.processed_records)
         self.status_panel.log(f"Processed {len(self.controller.state.all_processed_records)} record(s). {displayed} shown with current filter.")
 
     def _process_from_db(self) -> None:
         """Handle process from DB button click."""
+        def load_and_process_sync():
+            logs = self.controller.load_from_db()
+            if not logs:
+                return None, []
+            self.controller.process_records()
+            return logs, self.controller.state.processed_records
+
         self.progress_runner.run_with_progress(
-            "Loading logs from DB",
-            self.controller.load_from_db,
+            "Loading and processing logs from DB",
+            load_and_process_sync,
             self._on_process_from_db_complete,
         )
 
-    def _on_process_from_db_complete(self, logs: list[ParsedRecord]) -> None:
+    def _on_process_from_db_complete(self, result: tuple[Optional[list[ParsedRecord]], list[AttendanceRecord]]) -> None:
         """Handle process from DB completion."""
-        if not logs:
+        logs, processed = result
+        if logs is None:
             messagebox.showwarning("No logs", "No attendance logs stored in the local DB. Import a .DAT file first.")
             return
 
@@ -224,10 +241,11 @@ class ProcessorApp:
             name_lookup=self.controller.get_employee_name,
         )
         
-        # Process the records
-        self._process()
+        # Update output preview
+        displayed_output = self.output_preview.load_records(processed)
         
         self.status_panel.log(f"Loaded {len(logs)} log row(s) from DB. {displayed_input} shown with current filter.")
+        self.status_panel.log(f"Processed {len(self.controller.state.all_processed_records)} record(s). {displayed_output} shown with current filter.")
 
     def _edit_selected_status(self) -> None:
         """Handle edit status button click."""
@@ -266,8 +284,14 @@ class ProcessorApp:
         if not path:
             return
 
-        count = self.controller.save_csv(Path(path))
-        self.status_panel.log(f"Saved {count} filtered row(s) to {path}")
+        def save_sync():
+            return self.controller.save_csv(Path(path))
+
+        self.progress_runner.run_with_progress(
+            "Saving CSV",
+            save_sync,
+            lambda count: self.status_panel.log(f"Saved {count} filtered row(s) to {path}"),
+        )
 
     def _export_attlog(self) -> None:
         """Handle export attlog button click."""
@@ -282,8 +306,14 @@ class ProcessorApp:
         if not path:
             return
 
-        count = self.controller.export_attlog(Path(path))
-        self.status_panel.log(f"Exported {count} row(s) to {path}")
+        def export_sync():
+            return self.controller.export_attlog(Path(path))
+
+        self.progress_runner.run_with_progress(
+            "Exporting attlog",
+            export_sync,
+            lambda count: self.status_panel.log(f"Exported {count} row(s) to {path}"),
+        )
 
     def _apply_date_filter(self) -> None:
         """Handle apply date filter button click."""

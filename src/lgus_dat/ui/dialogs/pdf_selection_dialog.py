@@ -233,6 +233,8 @@ class DTRSelectionDialog:
                 self._show_warning("No Selection", "Please select at least one department.")
                 return
             self.result = {"mode": "departments", "department_ids": list(self.selected_departments)}
+        
+        self.window.destroy()
 
     def _show_warning(self, title: str, message: str) -> None:
         """Show a warning message box."""
