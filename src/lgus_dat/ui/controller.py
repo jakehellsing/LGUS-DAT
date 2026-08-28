@@ -276,7 +276,11 @@ class UIController:
         filtered_records = self._filter_records_for_dtr(selection, self.state.all_processed_records)
         
         # Get employee names and department info
-        employee_names = {emp.device_user_id: emp.name for emp in self.registry.all_employees()}
+        # Use full_name for DTR report if available; otherwise fall back to name.
+        employee_names = {
+            emp.device_user_id: (emp.full_name or emp.name)
+            for emp in self.registry.all_employees()
+        }
         department_names = {dept.department_id: dept.name for dept in self.registry.all_departments()}
         employee_departments = {
             emp.device_user_id: emp.department_id 

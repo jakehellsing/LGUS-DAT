@@ -89,8 +89,13 @@ The PySide6 desktop UI lets you import `.dat` files, process them into IN/OUT ro
 - Date and time range filtering for precise datetime selection
 - Employee search filter by ID or name
 - **DTR PDF generation** with excel-like monthly attendance reports
+- DTR report scope selection (all, by department, by specific employees)
 - CSV and NGTeco-compatible `attlog.dat` export with workcode '1'
 - Employee and department management with CRUD operations
+- Employee full-name profile for DTR PDF output only
+- Employee and department sorting by ID or name
+- Manual IN/OUT status editing with `MANUAL_EDIT` flag
+- Progress dialogs for imports, processing, and exports to keep UI responsive
 - Data persistence: raw logs are stored in SQLite and loaded on startup
 
 **Legacy Tkinter Features:**

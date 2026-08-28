@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
+    QComboBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -20,6 +21,19 @@ from PySide6.QtWidgets import (
 from lgus_dat.desktop.desktop_controller import DesktopController
 from lgus_dat.domain.department import Department
 from lgus_dat.domain.employee import Employee
+
+
+def _employee_id_key(emp: Employee):
+    """Sort key for employee ID that prefers numeric order."""
+    try:
+        return (0, int(emp.device_user_id))
+    except ValueError:
+        return (1, emp.device_user_id)
+
+
+def _department_id_key(dept: Department):
+    """Sort key for department ID."""
+    return dept.department_id
 
 
 class EmployeesPage(QWidget):
@@ -58,6 +72,10 @@ class EmployeesPage(QWidget):
         self.emp_name_input.setPlaceholderText("Employee Name")
         emp_controls.addWidget(self.emp_name_input)
 
+        self.emp_full_name_input = QLineEdit()
+        self.emp_full_name_input.setPlaceholderText("Full Name (DTR only)")
+        emp_controls.addWidget(self.emp_full_name_input)
+
         self.emp_dept_input = QSpinBox()
         self.emp_dept_input.setMinimum(0)
         self.emp_dept_input.setMaximum(999999)
@@ -75,12 +93,22 @@ class EmployeesPage(QWidget):
         emp_controls.addStretch()
         emp_layout.addLayout(emp_controls)
 
+        emp_sort_layout = QHBoxLayout()
+        emp_sort_layout.addWidget(QLabel("Sort by:"))
+        self.emp_sort_combo = QComboBox()
+        self.emp_sort_combo.addItems(["ID", "Name"])
+        self.emp_sort_combo.currentIndexChanged.connect(self._refresh_employees)
+        emp_sort_layout.addWidget(self.emp_sort_combo)
+        emp_sort_layout.addStretch()
+        emp_layout.addLayout(emp_sort_layout)
+
         self.emp_table = QTableWidget()
-        self.emp_table.setColumnCount(3)
-        self.emp_table.setHorizontalHeaderLabels(["Employee ID", "Name", "Department ID"])
+        self.emp_table.setColumnCount(4)
+        self.emp_table.setHorizontalHeaderLabels(["Employee ID", "Name", "Full Name", "Department ID"])
         self.emp_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.emp_table.horizontalHeader().setStretchLastSection(True)
         self.emp_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.emp_table.setSortingEnabled(True)
         emp_layout.addWidget(self.emp_table)
 
         self.tabs.addTab(self.employees_tab, "Employees")
@@ -113,12 +141,22 @@ class EmployeesPage(QWidget):
         dept_controls.addStretch()
         dept_layout.addLayout(dept_controls)
 
+        dept_sort_layout = QHBoxLayout()
+        dept_sort_layout.addWidget(QLabel("Sort by:"))
+        self.dept_sort_combo = QComboBox()
+        self.dept_sort_combo.addItems(["ID", "Name"])
+        self.dept_sort_combo.currentIndexChanged.connect(self._refresh_departments)
+        dept_sort_layout.addWidget(self.dept_sort_combo)
+        dept_sort_layout.addStretch()
+        dept_layout.addLayout(dept_sort_layout)
+
         self.dept_table = QTableWidget()
         self.dept_table.setColumnCount(2)
         self.dept_table.setHorizontalHeaderLabels(["Department ID", "Name"])
         self.dept_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.dept_table.horizontalHeader().setStretchLastSection(True)
         self.dept_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.dept_table.setSortingEnabled(True)
         dept_layout.addWidget(self.dept_table)
 
         self.tabs.addTab(self.departments_tab, "Departments")
@@ -127,15 +165,37 @@ class EmployeesPage(QWidget):
 
     def _refresh(self) -> None:
         """Refresh both tables from the registry."""
+        self._refresh_employees()
+        self._refresh_departments()
+
+    def _refresh_employees(self) -> None:
+        """Refresh the employee table, sorted by the current selection."""
         employees = self.controller.registry.all_employees()
+        sort_by = self.emp_sort_combo.currentText()
+
+        if sort_by == "ID":
+            employees = sorted(employees, key=_employee_id_key)
+        elif sort_by == "Name":
+            employees = sorted(employees, key=lambda e: e.name)
+
         self.emp_table.setRowCount(len(employees))
         for row, emp in enumerate(employees):
             self.emp_table.setItem(row, 0, QTableWidgetItem(emp.device_user_id))
             self.emp_table.setItem(row, 1, QTableWidgetItem(emp.name))
+            self.emp_table.setItem(row, 2, QTableWidgetItem(emp.full_name or ""))
             dept = str(emp.department_id) if emp.department_id is not None else ""
-            self.emp_table.setItem(row, 2, QTableWidgetItem(dept))
+            self.emp_table.setItem(row, 3, QTableWidgetItem(dept))
 
+    def _refresh_departments(self) -> None:
+        """Refresh the department table, sorted by the current selection."""
         departments = self.controller.registry.all_departments()
+        sort_by = self.dept_sort_combo.currentText()
+
+        if sort_by == "ID":
+            departments = sorted(departments, key=_department_id_key)
+        elif sort_by == "Name":
+            departments = sorted(departments, key=lambda d: d.name)
+
         self.dept_table.setRowCount(len(departments))
         for row, dept in enumerate(departments):
             self.dept_table.setItem(row, 0, QTableWidgetItem(str(dept.department_id)))
@@ -144,14 +204,15 @@ class EmployeesPage(QWidget):
     def _add_employee(self) -> None:
         emp_id = self.emp_id_input.text().strip()
         name = self.emp_name_input.text().strip()
+        full_name = self.emp_full_name_input.text().strip() or None
         if not emp_id or not name:
             QMessageBox.warning(self, "Missing Data", "Employee ID and name are required.")
             return
 
         dept_id = self.emp_dept_input.value() if self.emp_dept_input.value() > 0 else None
-        employee = Employee(device_user_id=emp_id, name=name, department_id=dept_id)
+        employee = Employee(device_user_id=emp_id, name=name, full_name=full_name, department_id=dept_id)
         self.controller.registry.upsert_employee(employee)
-        self._refresh()
+        self._refresh_employees()
 
     def _delete_employee(self) -> None:
         selected = self.emp_table.selectedItems()
@@ -160,7 +221,7 @@ class EmployeesPage(QWidget):
         row = selected[0].row()
         emp_id = self.emp_table.item(row, 0).text()
         self.controller.registry.delete_employee(emp_id)
-        self._refresh()
+        self._refresh_employees()
 
     def _add_department(self) -> None:
         dept_id = self.dept_id_input.value()
@@ -171,7 +232,7 @@ class EmployeesPage(QWidget):
 
         department = Department(department_id=dept_id, name=name)
         self.controller.registry.upsert_department(department)
-        self._refresh()
+        self._refresh_departments()
 
     def _delete_department(self) -> None:
         selected = self.dept_table.selectedItems()
@@ -180,4 +241,4 @@ class EmployeesPage(QWidget):
         row = selected[0].row()
         dept_id = int(self.dept_table.item(row, 0).text())
         self.controller.registry.delete_department(dept_id)
-        self._refresh()
+        self._refresh_departments()

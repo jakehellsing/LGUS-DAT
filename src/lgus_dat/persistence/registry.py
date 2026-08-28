@@ -42,6 +42,7 @@ class AttendanceRegistry:
                 CREATE TABLE IF NOT EXISTS employees (
                     device_user_id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
+                    full_name TEXT,
                     department_id INTEGER,
                     raw_record BLOB,
                     FOREIGN KEY (department_id) REFERENCES departments (department_id)
@@ -90,6 +91,8 @@ class AttendanceRegistry:
                 conn.execute("ALTER TABLE departments ADD COLUMN raw_record BLOB")
             if "raw_record" not in self._columns(conn, "employees"):
                 conn.execute("ALTER TABLE employees ADD COLUMN raw_record BLOB")
+            if "full_name" not in self._columns(conn, "employees"):
+                conn.execute("ALTER TABLE employees ADD COLUMN full_name TEXT")
             conn.commit()
 
     def upsert_department(self, department: Department) -> None:
@@ -114,16 +117,18 @@ class AttendanceRegistry:
         with self._connection() as conn:
             conn.execute(
                 """
-                INSERT INTO employees (device_user_id, name, department_id, raw_record)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO employees (device_user_id, name, full_name, department_id, raw_record)
+                VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(device_user_id) DO UPDATE SET
                     name = excluded.name,
+                    full_name = excluded.full_name,
                     department_id = excluded.department_id,
                     raw_record = excluded.raw_record
                 """,
                 (
                     employee.device_user_id,
                     employee.name,
+                    employee.full_name,
                     employee.department_id,
                     employee.raw_record,
                 ),
@@ -164,6 +169,7 @@ class AttendanceRegistry:
         return Employee(
             device_user_id=row["device_user_id"],
             name=row["name"],
+            full_name=row["full_name"],
             department_id=row["department_id"],
             raw_record=row["raw_record"],
         )
@@ -178,7 +184,7 @@ class AttendanceRegistry:
     def get_employee(self, device_user_id: str) -> Optional[Employee]:
         with self._connection() as conn:
             row = conn.execute(
-                "SELECT device_user_id, name, department_id, raw_record FROM employees WHERE device_user_id = ?",
+                "SELECT device_user_id, name, full_name, department_id, raw_record FROM employees WHERE device_user_id = ?",
                 (device_user_id,),
             ).fetchone()
         if row:
@@ -198,7 +204,7 @@ class AttendanceRegistry:
     def all_employees(self) -> list[Employee]:
         with self._connection() as conn:
             rows = conn.execute(
-                "SELECT device_user_id, name, department_id, raw_record FROM employees"
+                "SELECT device_user_id, name, full_name, department_id, raw_record FROM employees"
             ).fetchall()
         employees = [self._row_to_employee(row) for row in rows]
         employees.sort(key=lambda e: (int(e.device_user_id) if e.device_user_id.isdigit() else float("inf"), e.device_user_id.lower()))

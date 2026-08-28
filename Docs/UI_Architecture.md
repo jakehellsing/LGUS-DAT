@@ -45,6 +45,7 @@ src/lgus_dat/desktop/  # PySide6 desktop interface
   widgets/             # Reusable widgets
     kpi_card.py        # Dashboard KPI card
     data_table.py      # Reusable data table (currently placeholder)
+    progress_dialog.py # Modal progress dialog with worker thread
 ```
 
 ## Component Responsibilities

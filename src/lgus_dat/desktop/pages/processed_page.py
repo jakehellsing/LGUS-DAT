@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from lgus_dat.desktop.desktop_controller import DesktopController
+from lgus_dat.domain.attendance_record import PunchStatus
 
 
 class ProcessedPage(QWidget):
@@ -85,6 +87,14 @@ class ProcessedPage(QWidget):
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
 
+        # Edit control
+        edit_layout = QHBoxLayout()
+        edit_btn = QPushButton("Edit Selected Status")
+        edit_btn.clicked.connect(self._edit_status)
+        edit_layout.addWidget(edit_btn)
+        edit_layout.addStretch()
+        layout.addLayout(edit_layout)
+
         # Results table
         self.table = QTableWidget()
         self.table.setColumnCount(7)
@@ -140,4 +150,31 @@ class ProcessedPage(QWidget):
         self.start_date_check.setChecked(False)
         self.end_date_check.setChecked(False)
         self.controller.ui.clear_filters()
+        self._populate(self.controller.ui.state.processed_records)
+
+    def _edit_status(self) -> None:
+        selected = self.table.selectedItems()
+        if not selected:
+            return
+
+        row = selected[0].row()
+        records = self.controller.ui.state.processed_records
+        if row >= len(records):
+            return
+
+        record = records[row]
+        items = [PunchStatus.IN.value, PunchStatus.OUT.value]
+        status_text, ok = QInputDialog.getItem(
+            self,
+            "Edit Status",
+            "Select the new status:",
+            items,
+            items.index(record.status.value),
+            False,
+        )
+        if not ok:
+            return
+
+        new_status = PunchStatus(status_text)
+        self.controller.ui.edit_record_status(record, new_status)
         self._populate(self.controller.ui.state.processed_records)

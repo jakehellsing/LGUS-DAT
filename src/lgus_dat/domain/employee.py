@@ -19,3 +19,4 @@ class Employee:
     password: Optional[str] = None
     group_id: Optional[str] = None
     card: Optional[int] = None
+    full_name: Optional[str] = None

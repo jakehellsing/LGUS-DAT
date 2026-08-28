@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from lgus_dat.desktop.desktop_controller import DesktopController
+from lgus_dat.desktop.widgets.progress_dialog import ProgressDialog
 
 
 class ImportPage(QWidget):
@@ -112,7 +113,12 @@ class ImportPage(QWidget):
         if not path:
             return
 
-        result = self.controller.load_attendance(Path(path))
+        result = ProgressDialog("Importing", "Loading attendance .dat file...", self).run_task(
+            lambda: self.controller.load_attendance(Path(path))
+        )
+        if result is None:
+            return
+
         loaded_path, records, errors, new_count = result
 
         self.table.setRowCount(len(records))
@@ -132,7 +138,9 @@ class ImportPage(QWidget):
         )
         if not path:
             return
-        self.controller.ui.import_user_dat(Path(path))
+        ProgressDialog("Importing", "Loading user.dat...", self).run_task(
+            lambda: self.controller.ui.import_user_dat(Path(path))
+        )
 
     def _open_department_dat(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -143,7 +151,9 @@ class ImportPage(QWidget):
         )
         if not path:
             return
-        self.controller.ui.import_department_dat(Path(path))
+        ProgressDialog("Importing", "Loading department.dat...", self).run_task(
+            lambda: self.controller.ui.import_department_dat(Path(path))
+        )
 
     def _process(self) -> None:
         if not self.controller.ui.state.parsed_records:
@@ -166,12 +176,16 @@ class ImportPage(QWidget):
             QMessageBox.information(self, "No Records", f"No records found for {month_text}.")
             return
 
-        self.controller.ui.process_records(filtered)
+        ProgressDialog("Processing", f"Processing records for {month_text}...", self).run_task(
+            lambda: self.controller.ui.process_records(filtered)
+        )
         self.process_requested.emit()
 
     def _process_all(self) -> None:
         if not self.controller.ui.state.parsed_records:
             QMessageBox.warning(self, "No Data", "Import an attendance .dat file first.")
             return
-        self.controller.ui.process_records()
+        ProgressDialog("Processing", "Processing all records...", self).run_task(
+            lambda: self.controller.ui.process_records()
+        )
         self.process_requested.emit()

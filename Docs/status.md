@@ -4,7 +4,7 @@
 
 ### Current Version
 
-`v0.20.1`
+`v0.21.0`
 
 ### Status
 
@@ -58,6 +58,11 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] Employees and departments management page
 - [x] Light and dark theme support for PySide6 UI
 - [x] Attendance log persistence and automatic reload on startup
+- [x] Manual IN/OUT status editing with `MANUAL_EDIT` flag in the PySide6 UI
+- [x] DTR PDF scope selection by all employees, department, or specific employees
+- [x] Employee `full_name` field for DTR PDF output
+- [x] Employee and department sorting by ID or name
+- [x] Progress dialogs for imports, processing, and exports to keep UI responsive
 - [x] PyInstaller build for the PySide6 desktop executable
 
 ### In Progress
@@ -96,5 +101,6 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 || v0.19.0 | 2026-08-28 | Added dashboard KPIs, theme styling, and PyInstaller packaging support. |
 || v0.20.0 | 2026-08-28 | Implemented month-scoped processing and polished PySide6 UI. |
 || v0.20.1 | 2026-08-28 | Fixed data persistence by loading stored attendance logs on startup and repaired Processed tab date range picker. |
+|| v0.21.0 | 2026-08-28 | Added progress dialogs, employee full_name, manual status editing, DTR scope selection, and sorting. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
