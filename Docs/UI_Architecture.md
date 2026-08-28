@@ -4,6 +4,8 @@
 
 The LGUS-DAT desktop UI has been refactored from a monolithic structure to a modular component architecture. This separation of concerns improves maintainability, testability, and enables easier future UI framework migration.
 
+A new **PySide6** desktop UI was added in `src/lgus_dat/desktop/`. It provides a modern, themeable interface with sidebar navigation and is the primary interface moving forward. The legacy **Tkinter** UI remains in `src/lgus_dat/ui/`.
+
 ## Architecture
 
 ### Directory Structure
@@ -27,6 +29,22 @@ src/lgus_dat/ui/
     status_edit_dialog.py      # Status editing dialog
   controller.py         # Business logic coordination
   app.py               # Main application orchestration
+
+src/lgus_dat/desktop/  # PySide6 desktop interface
+  app.py               # Entry point and QApplication setup
+  main_window.py       # Main window with sidebar and stacked pages
+  desktop_controller.py # Adapter wrapping UIController
+  theme.py             # Light/dark theme definitions
+  pages/               # Page views
+    dashboard_page.py  # KPIs and quick actions
+    import_page.py     # File import and month-scoped processing
+    processed_page.py  # Processed records with search and date filters
+    reports_page.py    # DTR PDF, CSV, and attlog export
+    employees_page.py  # Employee and department management
+    settings_page.py   # Placeholder settings page
+  widgets/             # Reusable widgets
+    kpi_card.py        # Dashboard KPI card
+    data_table.py      # Reusable data table (currently placeholder)
 ```
 
 ## Component Responsibilities
@@ -293,4 +311,4 @@ Potential improvements to the modular architecture:
 
 ## Conclusion
 
-The modular UI architecture provides a solid foundation for future development while maintaining all existing functionality. The separation of concerns, improved testability, and framework independence make the codebase more maintainable and adaptable to changing requirements.
+The modular UI architecture provides a solid foundation for future development while maintaining all existing functionality. The PySide6 desktop UI is now the primary interface and shares the same business logic and registry as the legacy Tkinter UI through `UIController` and `DesktopController`. This dual-stack approach preserves existing work while enabling a modern, maintainable interface.

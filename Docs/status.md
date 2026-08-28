@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.16.0`
+`v0.20.1`
 
 ### Status
 
-Completed major UI refactoring to modular component architecture, separating concerns into reusable components, views, dialogs, and a business logic controller. This improves maintainability, testability, and enables easier future UI framework migration while maintaining all existing functionality including DTR PDF generation.
+Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package providing a dashboard, import, processed records with date filters, reports, employees, and settings pages. Raw attendance logs are now persisted and loaded on startup, and month-scoped processing allows users to process only a selected month. The legacy Tkinter UI remains in `ui/`.
 
 ### Implemented
 
@@ -50,6 +50,15 @@ Completed major UI refactoring to modular component architecture, separating con
 - [x] Business logic controller (`src/lgus_dat/ui/controller.py`)
 - [x] Reduced main app complexity from ~750 to ~465 lines
 - [x] Component-based UI for improved maintainability and testability
+- [x] PySide6 desktop application (`src/lgus_dat/desktop/app.py`) with sidebar navigation and stacked pages
+- [x] Dashboard page with real-time KPI cards and quick actions
+- [x] Import page with raw input preview and month-scoped processing
+- [x] Processed page with employee search and date range filter
+- [x] Reports page for DTR PDF, CSV, and attlog export
+- [x] Employees and departments management page
+- [x] Light and dark theme support for PySide6 UI
+- [x] Attendance log persistence and automatic reload on startup
+- [x] PyInstaller build for the PySide6 desktop executable
 
 ### In Progress
 
@@ -82,5 +91,10 @@ Completed major UI refactoring to modular component architecture, separating con
 | v0.14.0 | 2026-08-20 | Added time selection to date range filter for precise datetime filtering (HH:MM:SS format), color-coded status rows (IN=light blue, OUT=light yellow), and NGTeco-compatible `attlog.dat` export with workcode '1'. |
 | v0.15.0 | 2026-08-25 | Added DTR PDF generation with excel-like monthly attendance reports, duplicate punch handling, 4-punch time slot mapping, dynamic employee/department selection, and month picker for report generation. |
 | v0.16.0 | 2026-08-27 | Completed major UI refactoring to modular component architecture with separated concerns (components, views, dialogs, controller), reduced main app complexity by 38%, and improved maintainability for future UI framework migration. |
+|| v0.17.0 | 2026-08-28 | Added initial PySide6 desktop scaffold and dependency. |
+|| v0.18.0 | 2026-08-28 | Refactored UI to PySide6 with dashboard, import, processed, reports, employees, and settings pages; wired reports and employee management. |
+|| v0.19.0 | 2026-08-28 | Added dashboard KPIs, theme styling, and PyInstaller packaging support. |
+|| v0.20.0 | 2026-08-28 | Implemented month-scoped processing and polished PySide6 UI. |
+|| v0.20.1 | 2026-08-28 | Fixed data persistence by loading stored attendance logs on startup and repaired Processed tab date range picker. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

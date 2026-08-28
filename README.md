@@ -22,12 +22,19 @@ src/
     processing/     Sequence logic
     output/         CSV and PDF writers
     cli/            Command-line entry point
-    ui/             Desktop tkinter interface (modular components)
+    ui/             Legacy Tkinter desktop interface (modular components)
       components/   Reusable UI components (toolbars, panels, dialogs)
       views/        Data display components (treeviews, status panels)
       dialogs/      Modal dialogs (management, selection, editing)
       controller.py Business logic coordination
       app.py        Main application orchestration
+    desktop/        New PySide6 desktop interface
+      pages/        Page views (dashboard, import, processed, reports, employees, settings)
+      widgets/      Reusable widgets (kpi_card, data_table)
+      desktop_controller.py  Adapter for UIController
+      main_window.py         Main window with sidebar navigation
+      app.py                 PySide6 entry point
+      theme.py               Light/dark theme definitions
 
 tests/              Automated tests
 Docs/               Blueprint, status, and feature guides
@@ -56,7 +63,15 @@ python -m lgus_dat.cli.commands sample.dat
 lgus-dat sample.dat --output-dir output --archive-dir archive
 ```
 
-Launch the desktop UI:
+Launch the new PySide6 desktop UI:
+
+```bash
+python -m lgus_dat.desktop.app
+# or
+lgus-dat-desktop
+```
+
+The legacy Tkinter UI is still available:
 
 ```bash
 python -m lgus_dat.ui.app
@@ -64,15 +79,23 @@ python -m lgus_dat.ui.app
 lgus-dat-gui
 ```
 
-The UI lets you open a `.dat` file, preview the raw records, process them into IN/OUT rows, and save the resulting CSV.
+The PySide6 desktop UI lets you import `.dat` files, process them into IN/OUT rows, view processed records with date and search filters, generate DTR PDFs, export CSV and attlog files, and manage employees and departments.
 
-**Features:**
-- Date and time range filtering for precise datetime selection (HH:MM:SS format)
-- Color-coded status rows (IN=light blue, OUT=light yellow)
-- NGTeco-compatible `attlog.dat` export with workcode '1'
+**PySide6 Desktop Features:**
+- Sidebar navigation with Dashboard, Import, Processed, Reports, Employees, and Settings
+- Light and dark themes
+- Dashboard KPI cards (total employees, imported logs, processed records, unpaired IN)
+- Month-scoped processing to avoid reprocessing all stored data
+- Date and time range filtering for precise datetime selection
 - Employee search filter by ID or name
-- Manual IN/OUT status editing with correction flags
 - **DTR PDF generation** with excel-like monthly attendance reports
+- CSV and NGTeco-compatible `attlog.dat` export with workcode '1'
+- Employee and department management with CRUD operations
+- Data persistence: raw logs are stored in SQLite and loaded on startup
+
+**Legacy Tkinter Features:**
+- Color-coded status rows (IN=light blue, OUT=light yellow)
+- Manual IN/OUT status editing with correction flags
 - Duplicate punch handling (keeps first occurrence of same timestamp)
 - 4-punch mapping to time slots (IN AM, OUT AM, IN PM, OUT PM)
 - Dynamic employee/department selection for reports
@@ -91,11 +114,11 @@ You can also import the device's `user.dat` to resolve employee names from numer
 
 Pre-built Windows and Linux executables are produced by GitHub Actions for every push to `main`. Download the artifact for your platform from the **Build Executables** workflow run, then run `LGUS-DAT.exe` (Windows) or `LGUS-DAT` (Linux) directly — no Python installation is needed on the target PC.
 
-To build locally with PyInstaller:
+To build the PySide6 desktop app locally with PyInstaller:
 
 ```bash
 pip install -e ".[build]"
-pyinstaller --onefile --windowed --name LGUS-DAT src/lgus_dat/ui/app.py
+pyinstaller --onefile --windowed --name lgus-dat-desktop --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
 ```
 
-The output will be in `dist/LGUS-DAT` (Linux) or `dist/LGUS-DAT.exe` (Windows).
+The output will be in `dist/desktop/lgus-dat-desktop.exe` (Windows) or `dist/desktop/lgus-dat-desktop` (Linux).

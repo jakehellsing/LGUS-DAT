@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QDate
+from datetime import datetime, time
+
+from PySide6.QtCore import QDate
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDateEdit,
     QHBoxLayout,
     QHeaderView,
@@ -51,26 +54,24 @@ class ProcessedPage(QWidget):
 
         filter_layout.addSpacing(20)
 
+        self.start_date_check = QCheckBox("From:")
+        filter_layout.addWidget(self.start_date_check)
+
         self.start_date = QDateEdit()
         self.start_date.setCalendarPopup(True)
-        self.start_date.setSpecialValueText("Any")
+        self.start_date.setDisplayFormat("yyyy-MM-dd")
         self.start_date.setDate(QDate.currentDate())
-        self.start_date.setEnabled(False)
-        self.start_date_check = QPushButton("Start Date")
-        self.start_date_check.setCheckable(True)
-        self.start_date_check.toggled.connect(self.start_date.setEnabled)
-        filter_layout.addWidget(QLabel("From:"))
+        self.start_date.setMinimumWidth(120)
         filter_layout.addWidget(self.start_date)
+
+        self.end_date_check = QCheckBox("To:")
+        filter_layout.addWidget(self.end_date_check)
 
         self.end_date = QDateEdit()
         self.end_date.setCalendarPopup(True)
-        self.end_date.setSpecialValueText("Any")
+        self.end_date.setDisplayFormat("yyyy-MM-dd")
         self.end_date.setDate(QDate.currentDate())
-        self.end_date.setEnabled(False)
-        self.end_date_check = QPushButton("End Date")
-        self.end_date_check.setCheckable(True)
-        self.end_date_check.toggled.connect(self.end_date.setEnabled)
-        filter_layout.addWidget(QLabel("To:"))
+        self.end_date.setMinimumWidth(120)
         filter_layout.addWidget(self.end_date)
 
         apply_btn = QPushButton("Apply Filter")
@@ -118,8 +119,17 @@ class ProcessedPage(QWidget):
         query = self.search_field.text().strip()
 
         if self.start_date_check.isChecked() or self.end_date_check.isChecked():
-            start = self.start_date.date().toPython() if self.start_date_check.isChecked() else None
-            end = self.end_date.date().toPython() if self.end_date_check.isChecked() else None
+            start = None
+            end = None
+
+            if self.start_date_check.isChecked():
+                qdate = self.start_date.date().toPython()
+                start = datetime.combine(qdate, time.min)
+
+            if self.end_date_check.isChecked():
+                qdate = self.end_date.date().toPython()
+                end = datetime.combine(qdate, time.max)
+
             self.controller.ui.apply_date_filter(start, end)
 
         self.controller.ui.apply_search_filter(query)
