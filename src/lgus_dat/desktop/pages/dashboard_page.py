@@ -5,15 +5,18 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from lgus_dat.desktop.desktop_controller import DesktopController
 from lgus_dat.desktop.widgets.kpi_card import KpiCard
 
 
 class DashboardPage(QWidget):
     """Dashboard with summary metrics and quick actions."""
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, controller: DesktopController, parent=None) -> None:
         super().__init__(parent)
+        self.controller = controller
         self._build_ui()
+        self.refresh()
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -32,13 +35,13 @@ class DashboardPage(QWidget):
         self.kpi_total_records = KpiCard("Total Records", "0")
         self.kpi_processed = KpiCard("Processed Records", "0")
         self.kpi_unpaired = KpiCard("Unpaired IN", "0")
-        self.kpi_errors = KpiCard("Import Errors", "0")
+        self.kpi_imported = KpiCard("Imported Logs", "0")
 
         kpi_layout.addWidget(self.kpi_total_employees)
         kpi_layout.addWidget(self.kpi_total_records)
         kpi_layout.addWidget(self.kpi_processed)
         kpi_layout.addWidget(self.kpi_unpaired)
-        kpi_layout.addWidget(self.kpi_errors)
+        kpi_layout.addWidget(self.kpi_imported)
         kpi_layout.addStretch()
 
         layout.addLayout(kpi_layout)
@@ -60,3 +63,23 @@ class DashboardPage(QWidget):
         layout.addLayout(actions_layout)
 
         layout.addStretch()
+
+    def refresh(self) -> None:
+        """Refresh dashboard metrics from the controller."""
+        state = self.controller.ui.state
+        registry = self.controller.registry
+
+        employee_count = len(registry.all_employees())
+        total_records = len(state.parsed_records)
+        processed_count = len(state.all_processed_records)
+        unpaired_count = sum(
+            1 for rec in state.all_processed_records
+            if rec.exception_flag == "UNPAIRED_FINAL_IN"
+        )
+        imported_logs = registry.count_attendance_logs()
+
+        self.kpi_total_employees.set_value(str(employee_count))
+        self.kpi_total_records.set_value(str(total_records))
+        self.kpi_processed.set_value(str(processed_count))
+        self.kpi_unpaired.set_value(str(unpaired_count))
+        self.kpi_imported.set_value(str(imported_logs))

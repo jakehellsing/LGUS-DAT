@@ -47,16 +47,17 @@ class MainWindow(QMainWindow):
         # Content area
         self.stack = QStackedWidget()
 
+        self.dashboard_page = DashboardPage(self.controller)
         self.import_page = ImportPage(self.controller)
         self.processed_page = ProcessedPage(self.controller)
         self.import_page.process_requested.connect(self._on_process_requested)
 
         self.pages: dict[str, QWidget] = {
-            "Dashboard": DashboardPage(),
+            "Dashboard": self.dashboard_page,
             "Import": self.import_page,
             "Processed": self.processed_page,
             "Reports": ReportsPage(self.controller),
-            "Employees": EmployeesPage(),
+            "Employees": EmployeesPage(self.controller),
             "Settings": SettingsPage(),
         }
         for page in self.pages.values():
@@ -120,6 +121,8 @@ class MainWindow(QMainWindow):
         for btn in self.nav_buttons:
             if btn.text() == name:
                 btn.setChecked(True)
+        if name == "Dashboard":
+            self.dashboard_page.refresh()
         self.statusBar().showMessage(f"Viewing {name}")
 
     def _on_process_requested(self) -> None:
