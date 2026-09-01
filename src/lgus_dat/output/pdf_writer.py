@@ -26,10 +26,10 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
+    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
-    Spacer,
     Table,
     TableStyle,
 )
@@ -138,29 +138,37 @@ def _create_employee_page(
     month: date,
     daily_punches: dict[int, DailyPunches],
     department_name: Optional[str] = None,
-) -> list:
-    """Create PDF elements for one employee's monthly DTR page."""
-    elements = []
+    page_width: float = 3.7 * inch,
+) -> Table:
+    """Create a single-column DTR table that fits inside a two-column layout."""
     _, num_days = calendar.monthrange(month.year, month.month)
 
     display_name = employee_name or employee_id
     month_str = month.strftime("%B %Y")
 
-    # Title
-    title_table = Table(
-        [["DAILY TIME RECORD"]],
-        colWidths=[7 * inch],
-        style=TableStyle(
-            [
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 16),
-            ]
-        ),
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "DTRTitle",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=12,
+        leading=14,
+        alignment=TA_CENTER,
     )
-    elements.append(title_table)
-    elements.append(Spacer(1, 0.15 * inch))
+    cert_style = ParagraphStyle(
+        "Cert",
+        parent=styles["Normal"],
+        fontSize=7,
+        leading=9,
+        alignment=TA_CENTER,
+    )
+    cert_text = (
+        "I CERTIFY on my honor that the above is a true and correct report of the hours of work performed, "
+        "record of which was made DAILY at the time of arrival and at the time of departure from office."
+    )
+
+    # Title
+    title_para = Paragraph("DAILY TIME RECORD", title_style)
 
     # Employee info header
     info_data = [
@@ -169,22 +177,20 @@ def _create_employee_page(
     ]
     info_table = Table(
         info_data,
-        colWidths=[1.3 * inch, 5.7 * inch],
+        colWidths=[0.55 * inch, page_width - 0.55 * inch],
         style=TableStyle(
             [
                 ("ALIGN", (0, 0), (-1, -1), "LEFT"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
                 ("LINEBELOW", (1, 0), (1, 0), 0.5, colors.black),
                 ("LINEBELOW", (1, 1), (1, 1), 0.5, colors.black),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
             ]
         ),
     )
-    elements.append(info_table)
-    elements.append(Spacer(1, 0.15 * inch))
 
     # DTR table
     table_data = [
@@ -211,10 +217,21 @@ def _create_employee_page(
 
     table_data.append(["TOTAL =", "", "", "", "", "", "", str(present_days)])
 
-    dtr_table = Table(
-        table_data,
-        colWidths=[0.45 * inch, 0.85 * inch, 0.85 * inch, 0.85 * inch, 0.85 * inch, 0.55 * inch, 0.55 * inch, 0.85 * inch],
-    )
+    base_dtr_width = 3.7 * inch
+    base_col_widths = [
+        0.3 * inch,
+        0.52 * inch,
+        0.52 * inch,
+        0.52 * inch,
+        0.52 * inch,
+        0.33 * inch,
+        0.33 * inch,
+        0.45 * inch,
+    ]
+    scale = page_width / base_dtr_width
+    dtr_col_widths = [w * scale for w in base_col_widths]
+
+    dtr_table = Table(table_data, colWidths=dtr_col_widths)
 
     dtr_table.setStyle(
         TableStyle(
@@ -229,17 +246,19 @@ def _create_employee_page(
                 ("BACKGROUND", (0, 0), (-1, 1), colors.grey),
                 ("TEXTCOLOR", (0, 0), (-1, 1), colors.whitesmoke),
                 ("FONTNAME", (0, 0), (-1, 1), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 1), 9),
+                ("FONTSIZE", (0, 0), (-1, 1), 7),
                 ("ALIGN", (0, 0), (-1, 1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, 1), "MIDDLE"),
                 # Data rows
                 ("FONTNAME", (0, 2), (-1, -2), "Helvetica"),
-                ("FONTSIZE", (0, 2), (-1, -2), 8),
+                ("FONTSIZE", (0, 2), (-1, -2), 7),
                 ("ALIGN", (0, 2), (-1, -2), "CENTER"),
                 ("VALIGN", (0, 2), (-1, -2), "MIDDLE"),
+                ("TOPPADDING", (0, 2), (-1, -2), 1),
+                ("BOTTOMPADDING", (0, 2), (-1, -2), 1),
                 # Total row
                 ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-                ("FONTSIZE", (0, -1), (-1, -1), 9),
+                ("FONTSIZE", (0, -1), (-1, -1), 8),
                 ("ALIGN", (0, -1), (-1, -1), "CENTER"),
                 ("VALIGN", (0, -1), (-1, -1), "MIDDLE"),
                 # Grid and striping
@@ -249,23 +268,6 @@ def _create_employee_page(
             ]
         )
     )
-    elements.append(dtr_table)
-    elements.append(Spacer(1, 0.15 * inch))
-
-    # Certification
-    cert_style = ParagraphStyle(
-        "Cert",
-        parent=getSampleStyleSheet()["Normal"],
-        fontSize=9,
-        leading=12,
-        alignment=TA_CENTER,
-    )
-    cert_text = (
-        "I CERTIFY on my honor that the above is a true and correct report of the hours of work performed, "
-        "record of which was made DAILY at the time of arrival and at the time of departure from office."
-    )
-    elements.append(Paragraph(cert_text, cert_style))
-    elements.append(Spacer(1, 0.2 * inch))
 
     # Signature block
     sig_data = [
@@ -279,23 +281,43 @@ def _create_employee_page(
     ]
     sig_table = Table(
         sig_data,
-        colWidths=[7 * inch],
+        colWidths=[page_width],
         style=TableStyle(
             [
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
                 ("LINEBELOW", (0, 0), (0, 0), 0.5, colors.black),
                 ("LINEBELOW", (0, 5), (0, 5), 0.5, colors.black),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
             ]
         ),
     )
-    elements.append(sig_table)
 
-    return elements
+    # Combine into one vertical table
+    page_data = [
+        [title_para],
+        [info_table],
+        [dtr_table],
+        [Paragraph(cert_text, cert_style)],
+        [sig_table],
+    ]
+    page_table = Table(
+        page_data,
+        colWidths=[page_width],
+        style=TableStyle(
+            [
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ]
+        ),
+    )
+
+    return page_table
 
 
 def generate_dtr_pdf(
@@ -319,42 +341,68 @@ def generate_dtr_pdf(
     doc = SimpleDocTemplate(
         str(output_path),
         pagesize=letter,
-        rightMargin=0.5*inch,
-        leftMargin=0.5*inch,
-        topMargin=0.5*inch,
-        bottomMargin=0.5*inch,
+        rightMargin=0.4*inch,
+        leftMargin=0.4*inch,
+        topMargin=0.4*inch,
+        bottomMargin=0.4*inch,
     )
     
     elements = []
-    
+
+    # Two-column layout: two copies of the same DTR side-by-side on one page
+    col_width = (letter[0] - doc.leftMargin - doc.rightMargin - 0.1 * inch) / 2
+
     # Sort employees by ID for consistent ordering
     sorted_employee_ids = sorted(employee_records.keys())
-    
+
     for i, employee_id in enumerate(sorted_employee_ids):
         records = employee_records[employee_id]
         employee_name = employee_names.get(employee_id) if employee_names else None
-        
+
         # Get department info if available
         dept_name = None
         if employee_departments and department_names:
             dept_id = employee_departments.get(employee_id)
             if dept_id is not None:
                 dept_name = department_names.get(dept_id)
-        
+
         # Map punches to daily slots
         daily_punches = _map_punches_to_daily_slots(records, month)
-        
-        # Create page for this employee
-        page_elements = _create_employee_page(
+
+        # Create two copies of the same DTR page side-by-side
+        left_page = _create_employee_page(
             employee_id=employee_id,
             employee_name=employee_name,
             month=month,
             daily_punches=daily_punches,
             department_name=dept_name,
+            page_width=col_width,
         )
-        
-        elements.extend(page_elements)
-        
+        right_page = _create_employee_page(
+            employee_id=employee_id,
+            employee_name=employee_name,
+            month=month,
+            daily_punches=daily_punches,
+            department_name=dept_name,
+            page_width=col_width,
+        )
+
+        outer = Table(
+            [[left_page, "", right_page]],
+            colWidths=[col_width, 0.1 * inch, col_width],
+            style=TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ]
+            ),
+        )
+        elements.append(KeepTogether([outer]))
+
         # Add page break between employees (except after last employee)
         if i < len(sorted_employee_ids) - 1:
             elements.append(PageBreak())
