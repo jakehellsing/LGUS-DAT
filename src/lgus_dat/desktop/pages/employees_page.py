@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from PySide6.QtWidgets import (
     QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -36,13 +41,69 @@ def _department_id_key(dept: Department):
     return dept.department_id
 
 
+class EmployeeEditDialog(QDialog):
+    """Modal dialog for editing an employee."""
+
+    def __init__(self, controller: DesktopController, employee: Employee, parent=None) -> None:
+        super().__init__(parent)
+        self.controller = controller
+        self.employee = employee
+        self.setWindowTitle("Edit Employee")
+        self.setModal(True)
+        self._build_ui()
+
+    def _build_ui(self) -> None:
+        layout = QFormLayout(self)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        self.id_edit = QLineEdit(self.employee.device_user_id)
+        self.id_edit.setReadOnly(True)
+        layout.addRow("Employee ID:", self.id_edit)
+
+        self.name_edit = QLineEdit(self.employee.name)
+        layout.addRow("Name:", self.name_edit)
+
+        self.full_name_edit = QLineEdit(self.employee.full_name or "")
+        layout.addRow("Full Name (DTR only):", self.full_name_edit)
+
+        self.dept_input = QSpinBox()
+        self.dept_input.setMinimum(0)
+        self.dept_input.setMaximum(999999)
+        self.dept_input.setSpecialValueText("None")
+        self.dept_input.setValue(self.employee.department_id or 0)
+        layout.addRow("Department ID:", self.dept_input)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self._save)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def _save(self) -> None:
+        name = self.name_edit.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Missing Data", "Employee name is required.")
+            return
+
+        full_name = self.full_name_edit.text().strip() or None
+        dept_id = self.dept_input.value() if self.dept_input.value() > 0 else None
+
+        updated = replace(
+            self.employee,
+            name=name,
+            full_name=full_name,
+            department_id=dept_id,
+        )
+        self.controller.registry.upsert_employee(updated)
+        self.accept()
+
+
 class EmployeesPage(QWidget):
     """Page for managing employees and departments."""
 
     def __init__(self, controller: DesktopController, parent=None) -> None:
         super().__init__(parent)
         self.controller = controller
-        self._editing_emp_id: str | None = None
         self._build_ui()
         self._refresh()
 
@@ -90,11 +151,6 @@ class EmployeesPage(QWidget):
         edit_emp_btn = QPushButton("Edit Selected")
         edit_emp_btn.clicked.connect(self._edit_employee)
         emp_controls.addWidget(edit_emp_btn)
-
-        self.cancel_emp_btn = QPushButton("Cancel")
-        self.cancel_emp_btn.clicked.connect(self._cancel_edit)
-        self.cancel_emp_btn.setVisible(False)
-        emp_controls.addWidget(self.cancel_emp_btn)
 
         del_emp_btn = QPushButton("Delete Selected")
         del_emp_btn.clicked.connect(self._delete_employee)
@@ -219,10 +275,6 @@ class EmployeesPage(QWidget):
             QMessageBox.warning(self, "Missing Data", "Employee ID and name are required.")
             return
 
-        if self._editing_emp_id and emp_id != self._editing_emp_id:
-            QMessageBox.warning(self, "Edit Error", "Cannot change Employee ID while editing.")
-            return
-
         dept_id = self.emp_dept_input.value() if self.emp_dept_input.value() > 0 else None
         employee = Employee(device_user_id=emp_id, name=name, full_name=full_name, department_id=dept_id)
         self.controller.registry.upsert_employee(employee)
@@ -232,6 +284,7 @@ class EmployeesPage(QWidget):
     def _edit_employee(self) -> None:
         selected = self.emp_table.selectedItems()
         if not selected:
+            QMessageBox.warning(self, "No Selection", "Please select an employee to edit.")
             return
         row = selected[0].row()
         emp_id = self.emp_table.item(row, 0).text()
@@ -239,28 +292,15 @@ class EmployeesPage(QWidget):
         if employee is None:
             return
 
-        self._editing_emp_id = employee.device_user_id
-        self.emp_id_input.setText(employee.device_user_id)
-        self.emp_id_input.setEnabled(False)
-        self.emp_name_input.setText(employee.name)
-        self.emp_full_name_input.setText(employee.full_name or "")
-        self.emp_dept_input.setValue(employee.department_id or 0)
-
-        self.add_emp_btn.setText("Update Employee")
-        self.cancel_emp_btn.setVisible(True)
-
-    def _cancel_edit(self) -> None:
-        self._clear_employee_inputs()
+        dialog = EmployeeEditDialog(self.controller, employee, self)
+        dialog.exec()
+        self._refresh_employees()
 
     def _clear_employee_inputs(self) -> None:
-        self._editing_emp_id = None
         self.emp_id_input.clear()
-        self.emp_id_input.setEnabled(True)
         self.emp_name_input.clear()
         self.emp_full_name_input.clear()
         self.emp_dept_input.setValue(0)
-        self.add_emp_btn.setText("Add Employee")
-        self.cancel_emp_btn.setVisible(False)
 
     def _delete_employee(self) -> None:
         selected = self.emp_table.selectedItems()
