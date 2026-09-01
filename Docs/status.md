@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.22.1`
+`v0.23.0`
 
 ### Status
 
-Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package providing a dashboard, import, processed records with date filters, reports, employees, and settings pages. Raw attendance logs are now persisted and loaded on startup, and month-scoped processing allows users to process only a selected month. A new **All Records** window loads every stored log directly from the registry, processes it on demand, and provides search and date filters so users always see accumulated data. The legacy Tkinter UI remains in `ui/`.
+Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package providing a dashboard, import, processed records with date filters, reports, employees, and settings pages. Raw attendance logs are now persisted and loaded on startup, and month-scoped processing allows users to process only a selected month. A new **All Records** window loads every stored log directly from the registry, processes it on demand, and provides search and date filters so users always see accumulated data. The employee edit dialog in the PySide6 Employees page is now a modal Save dialog and uses a department dropdown for assignment. The legacy Tkinter UI remains in `ui/`.
 
 ### Implemented
 
@@ -65,6 +65,8 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] Employee and department sorting by ID or name
 - [x] Progress dialogs for imports, processing, and exports to keep UI responsive
 - [x] PyInstaller build for the PySide6 desktop executable
+- [x] Modal employee edit dialog in the PySide6 desktop UI
+- [x] Department dropdown selection for employee assignment in PySide6
 
 ### In Progress
 
@@ -105,6 +107,7 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 || v0.21.0 | 2026-08-28 | Added progress dialogs, employee full_name, manual status editing, DTR scope selection, and sorting. |
 || v0.22.0 | 2026-09-01 | Fixed imported attendance data accumulation and added an All Records window for viewing every stored, processed attendance record with search and date filters. |
 || v0.22.1 | 2026-09-01 | Added a performance benchmark and a progress dialog to the All Records window so loading and processing large registries does not freeze the UI. |
+|| v0.23.0 | 2026-09-01 | Converted employee edit to a modal Save dialog and replaced the Department ID spin box with a department dropdown in the PySide6 UI. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 
