@@ -82,8 +82,25 @@ class UIController:
         
         self.state.all_processed_records = process_records(records, name_lookup=name_lookup)
         self._apply_filters()
-        
+
         return self.state.all_processed_records
+
+    def ensure_processed(self) -> list[AttendanceRecord]:
+        """Process all stored attendance logs if no processed records exist.
+
+        This lets reports and exports work without forcing the user to click
+        Process on the Import page first. The manual Process button remains
+        available for re-consolidating logs.
+        """
+        if self.state.all_processed_records:
+            return self.state.all_processed_records
+
+        logs = self.registry.get_attendance_logs()
+        if not logs:
+            return []
+
+        employees = {emp.device_user_id: emp.name for emp in self.registry.all_employees()}
+        return self.process_records(logs, name_lookup=employees.get)
 
     def load_from_db(self) -> list[ParsedRecord]:
         """Load attendance logs from the database.

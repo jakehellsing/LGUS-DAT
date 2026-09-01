@@ -168,9 +168,6 @@ class ReportsPage(QWidget):
         layout.addStretch()
 
     def _generate_pdf(self) -> None:
-        if not self.controller.ui.state.all_processed_records:
-            return
-
         month_text = self.month_edit.text().strip()
         try:
             report_date = date.fromisoformat(f"{month_text}-01")
@@ -179,6 +176,10 @@ class ReportsPage(QWidget):
 
         scope_dialog = DTRScopeDialog(self.controller, self)
         if scope_dialog.exec() != QDialog.Accepted:
+            return
+
+        self.controller.ui.ensure_processed()
+        if not self.controller.ui.state.all_processed_records:
             return
 
         selection = scope_dialog.get_selection()
@@ -197,6 +198,7 @@ class ReportsPage(QWidget):
         )
 
     def _export_csv(self) -> None:
+        self.controller.ui.ensure_processed()
         if not self.controller.ui.state.processed_records:
             return
 
@@ -214,6 +216,7 @@ class ReportsPage(QWidget):
         )
 
     def _export_attlog(self) -> None:
+        self.controller.ui.ensure_processed()
         if not self.controller.ui.state.processed_records:
             return
 
