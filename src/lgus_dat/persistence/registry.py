@@ -29,6 +29,10 @@ class AttendanceRegistry:
         cursor = conn.execute(f"PRAGMA table_info({table})")
         return {row["name"] for row in cursor.fetchall()}
 
+    def _tables(self, conn: sqlite3.Connection) -> set[str]:
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        return {row["name"] for row in cursor.fetchall()}
+
     def _init_db(self) -> None:
         with self._connection() as conn:
             conn.executescript(
@@ -85,6 +89,10 @@ class AttendanceRegistry:
                     filename TEXT PRIMARY KEY,
                     content BLOB NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS positions (
+                    name TEXT PRIMARY KEY
+                );
                 """
             )
             # Migrate older registries that may be missing the raw_record columns.
@@ -96,6 +104,20 @@ class AttendanceRegistry:
                 conn.execute("ALTER TABLE employees ADD COLUMN full_name TEXT")
             if "position" not in self._columns(conn, "employees"):
                 conn.execute("ALTER TABLE employees ADD COLUMN position TEXT")
+            if "positions" not in self._tables(conn):
+                conn.execute(
+                    """
+                    CREATE TABLE positions (
+                        name TEXT PRIMARY KEY
+                    )
+                    """
+                )
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO positions (name)
+                    SELECT DISTINCT position FROM employees WHERE position IS NOT NULL
+                    """
+                )
             conn.commit()
 
     def upsert_department(self, department: Department) -> None:
@@ -396,3 +418,43 @@ class AttendanceRegistry:
                 "SELECT DISTINCT source_file FROM attendance_logs ORDER BY source_file"
             ).fetchall()
         return [row["source_file"] for row in rows]
+
+    def all_positions(self) -> list[str]:
+        """Return all position names in alphabetical order."""
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT name FROM positions ORDER BY name"
+            ).fetchall()
+        return [row["name"] for row in rows]
+
+    def add_position(self, name: str) -> None:
+        """Insert a new position name."""
+        with self._connection() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO positions (name) VALUES (?)",
+                (name,),
+            )
+            conn.commit()
+
+    def rename_position(self, old_name: str, new_name: str) -> None:
+        """Rename a position and update all employees using it."""
+        with self._connection() as conn:
+            conn.execute(
+                "UPDATE OR IGNORE positions SET name = ? WHERE name = ?",
+                (new_name, old_name),
+            )
+            conn.execute(
+                "UPDATE employees SET position = ? WHERE position = ?",
+                (new_name, old_name),
+            )
+            conn.commit()
+
+    def delete_position(self, name: str) -> None:
+        """Delete a position and clear it from employees."""
+        with self._connection() as conn:
+            conn.execute("DELETE FROM positions WHERE name = ?", (name,))
+            conn.execute(
+                "UPDATE employees SET position = NULL WHERE position = ?",
+                (name,),
+            )
+            conn.commit()

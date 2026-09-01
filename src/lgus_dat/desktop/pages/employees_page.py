@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -69,8 +70,15 @@ class EmployeeEditDialog(QDialog):
         self.full_name_edit = QLineEdit(self.employee.full_name or "")
         layout.addRow("Full Name (DTR only):", self.full_name_edit)
 
-        self.position_edit = QLineEdit(self.employee.position or "")
-        layout.addRow("Position (DTR only):", self.position_edit)
+        self.position_combo = QComboBox()
+        self.position_combo.addItem("None", None)
+        for pos in self.controller.registry.all_positions():
+            self.position_combo.addItem(pos, pos)
+        for i in range(self.position_combo.count()):
+            if self.position_combo.itemData(i, Qt.UserRole) == self.employee.position:
+                self.position_combo.setCurrentIndex(i)
+                break
+        layout.addRow("Position (DTR only):", self.position_combo)
 
         self.dept_combo = QComboBox()
         self.dept_combo.addItem("None", None)
@@ -94,7 +102,7 @@ class EmployeeEditDialog(QDialog):
             return
 
         full_name = self.full_name_edit.text().strip() or None
-        position = self.position_edit.text().strip() or None
+        position = self.position_combo.currentData()
         dept_id = self.dept_combo.currentData()
 
         updated = replace(
@@ -148,9 +156,9 @@ class EmployeesPage(QWidget):
         self.emp_full_name_input.setPlaceholderText("Full Name (DTR only)")
         emp_controls.addWidget(self.emp_full_name_input)
 
-        self.emp_position_input = QLineEdit()
-        self.emp_position_input.setPlaceholderText("Position (DTR only)")
-        emp_controls.addWidget(self.emp_position_input)
+        self.emp_position_combo = QComboBox()
+        self.emp_position_combo.setMinimumWidth(140)
+        emp_controls.addWidget(self.emp_position_combo)
 
         self.emp_dept_input = QSpinBox()
         self.emp_dept_input.setMinimum(0)
@@ -245,6 +253,28 @@ class EmployeesPage(QWidget):
         self.positions_tab = QWidget()
         positions_layout = QVBoxLayout(self.positions_tab)
 
+        positions_controls = QHBoxLayout()
+        positions_controls.setSpacing(12)
+
+        self.position_name_input = QLineEdit()
+        self.position_name_input.setPlaceholderText("Position Name")
+        positions_controls.addWidget(self.position_name_input)
+
+        add_pos_btn = QPushButton("Add")
+        add_pos_btn.clicked.connect(self._add_position)
+        positions_controls.addWidget(add_pos_btn)
+
+        edit_pos_btn = QPushButton("Edit")
+        edit_pos_btn.clicked.connect(self._edit_position)
+        positions_controls.addWidget(edit_pos_btn)
+
+        del_pos_btn = QPushButton("Delete")
+        del_pos_btn.clicked.connect(self._delete_position)
+        positions_controls.addWidget(del_pos_btn)
+
+        positions_controls.addStretch()
+        positions_layout.addLayout(positions_controls)
+
         self.positions_table = QTableWidget()
         self.positions_table.setColumnCount(2)
         self.positions_table.setHorizontalHeaderLabels(["Position", "Employee Count"])
@@ -262,17 +292,74 @@ class EmployeesPage(QWidget):
         """Refresh all tables from the registry."""
         self._refresh_employees()
         self._refresh_departments()
+        self._load_employee_position_combo()
         self._refresh_positions()
 
+    def _load_employee_position_combo(self) -> None:
+        """Populate the employee position dropdown from the master list."""
+        current = self.emp_position_combo.currentData()
+        self.emp_position_combo.clear()
+        self.emp_position_combo.addItem("None", None)
+        for pos in self.controller.registry.all_positions():
+            self.emp_position_combo.addItem(pos, pos)
+        for i in range(self.emp_position_combo.count()):
+            if self.emp_position_combo.itemData(i, Qt.UserRole) == current:
+                self.emp_position_combo.setCurrentIndex(i)
+                break
+
     def _refresh_positions(self) -> None:
-        """Refresh the positions table with unique positions and counts."""
+        """Refresh the positions table with master positions and employee counts."""
+        positions = self.controller.registry.all_positions()
         employees = self.controller.registry.all_employees()
         counts = Counter(emp.position for emp in employees if emp.position)
 
-        self.positions_table.setRowCount(len(counts))
-        for row, (position, count) in enumerate(sorted(counts.items())):
+        self.positions_table.setRowCount(len(positions))
+        for row, position in enumerate(positions):
             self.positions_table.setItem(row, 0, QTableWidgetItem(position))
-            self.positions_table.setItem(row, 1, QTableWidgetItem(str(count)))
+            self.positions_table.setItem(row, 1, QTableWidgetItem(str(counts.get(position, 0))))
+
+    def _add_position(self) -> None:
+        """Add a new position to the master list."""
+        name = self.position_name_input.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Missing Data", "Position name is required.")
+            return
+        self.controller.registry.add_position(name)
+        self.position_name_input.clear()
+        self._refresh()
+
+    def _edit_position(self) -> None:
+        """Rename the selected position."""
+        selected = self.positions_table.selectedItems()
+        if not selected:
+            QMessageBox.warning(self, "No Selection", "Please select a position to edit.")
+            return
+        row = selected[0].row()
+        old_name = self.positions_table.item(row, 0).text()
+        new_name, ok = QInputDialog.getText(
+            self, "Edit Position", f"Rename '{old_name}' to:", text=old_name
+        )
+        if not ok or not new_name.strip() or new_name.strip() == old_name:
+            return
+        new_name = new_name.strip()
+        self.controller.registry.rename_position(old_name, new_name)
+        self._refresh()
+
+    def _delete_position(self) -> None:
+        """Delete the selected position and clear it from any employees."""
+        selected = self.positions_table.selectedItems()
+        if not selected:
+            QMessageBox.warning(self, "No Selection", "Please select a position to delete.")
+            return
+        row = selected[0].row()
+        name = self.positions_table.item(row, 0).text()
+        if QMessageBox.question(
+            self,
+            "Confirm Delete",
+            f"Delete position '{name}'? This will also clear it from any assigned employees.",
+        ) == QMessageBox.Yes:
+            self.controller.registry.delete_position(name)
+            self._refresh()
 
     def _refresh_employees(self) -> None:
         """Refresh the employee table, sorted by the current selection."""
@@ -312,7 +399,7 @@ class EmployeesPage(QWidget):
         emp_id = self.emp_id_input.text().strip()
         name = self.emp_name_input.text().strip()
         full_name = self.emp_full_name_input.text().strip() or None
-        position = self.emp_position_input.text().strip() or None
+        position = self.emp_position_combo.currentData()
         if not emp_id or not name:
             QMessageBox.warning(self, "Missing Data", "Employee ID and name are required.")
             return
@@ -342,7 +429,7 @@ class EmployeesPage(QWidget):
         self.emp_id_input.clear()
         self.emp_name_input.clear()
         self.emp_full_name_input.clear()
-        self.emp_position_input.clear()
+        self.emp_position_combo.setCurrentIndex(0)
         self.emp_dept_input.setValue(0)
 
     def _delete_employee(self) -> None:
