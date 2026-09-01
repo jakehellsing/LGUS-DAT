@@ -304,6 +304,11 @@ class UIController:
             for emp in self.registry.all_employees() 
             if emp.department_id is not None
         }
+        employee_positions = {
+            emp.device_user_id: emp.position
+            for emp in self.registry.all_employees()
+            if emp.position is not None
+        }
 
         # Group records by employee
         grouped = group_records_by_employee(filtered_records)
@@ -315,6 +320,7 @@ class UIController:
             employee_names=employee_names,
             department_names=department_names,
             employee_departments=employee_departments,
+            employee_positions=employee_positions,
         )
         
         return str(path), len(filtered_records)

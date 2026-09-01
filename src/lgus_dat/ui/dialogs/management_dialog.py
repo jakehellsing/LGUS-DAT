@@ -97,9 +97,13 @@ class _EmployeeDialog:
             return
 
         raw_record = self.employee.raw_record if self.employee else None
+        position = self.employee.position if self.employee else None
+        full_name = self.employee.full_name if self.employee else None
         self.result = Employee(
             device_user_id=user_id,
             name=name,
+            full_name=full_name,
+            position=position,
             department_id=department_id,
             raw_record=raw_record,
         )

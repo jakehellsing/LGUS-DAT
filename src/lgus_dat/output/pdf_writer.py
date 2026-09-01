@@ -138,6 +138,7 @@ def _create_employee_page(
     month: date,
     daily_punches: dict[int, DailyPunches],
     department_name: Optional[str] = None,
+    employee_position: Optional[str] = None,
     page_width: float = 3.7 * inch,
 ) -> Table:
     """Create a single-column DTR table that fits inside a two-column layout."""
@@ -196,7 +197,13 @@ def _create_employee_page(
     label_width = 0.85 * inch
     info_data = [
         [Paragraph("NAME:", info_style), Paragraph(display_name, info_style)],
-        [Paragraph("For the Month of:", info_style), Paragraph(month_str, info_style)],
+    ]
+    if employee_position:
+        info_data.append([Paragraph("POSITION:", info_style), Paragraph(employee_position, info_style)])
+    info_data.append([Paragraph("For the Month of:", info_style), Paragraph(month_str, info_style)])
+    line_style_commands = [
+        ("LINEBELOW", (1, row - 1), (1, row - 1), 0.5, colors.black)
+        for row in range(1, len(info_data) + 1)
     ]
     info_table = Table(
         info_data,
@@ -204,8 +211,7 @@ def _create_employee_page(
         style=TableStyle(
             [
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LINEBELOW", (1, 0), (1, 0), 0.5, colors.black),
-                ("LINEBELOW", (1, 1), (1, 1), 0.5, colors.black),
+                *line_style_commands,
                 ("TOPPADDING", (0, 0), (-1, -1), 1),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
             ]
@@ -342,6 +348,7 @@ def generate_dtr_pdf(
     employee_names: Optional[dict[str, str]] = None,
     department_names: Optional[dict[int, str]] = None,
     employee_departments: Optional[dict[str, int]] = None,
+    employee_positions: Optional[dict[str, str]] = None,
 ) -> None:
     """Generate a DTR PDF report for employees for a given month.
     
@@ -352,6 +359,7 @@ def generate_dtr_pdf(
         employee_names: Optional dictionary mapping employee_id to employee name
         department_names: Optional dictionary mapping department_id to department name
         employee_departments: Optional dictionary mapping employee_id to department_id
+        employee_positions: Optional dictionary mapping employee_id to position
     """
     doc = SimpleDocTemplate(
         str(output_path),
@@ -381,6 +389,8 @@ def generate_dtr_pdf(
             if dept_id is not None:
                 dept_name = department_names.get(dept_id)
 
+        employee_position = employee_positions.get(employee_id) if employee_positions else None
+
         # Map punches to daily slots
         daily_punches = _map_punches_to_daily_slots(records, month)
 
@@ -391,6 +401,7 @@ def generate_dtr_pdf(
             month=month,
             daily_punches=daily_punches,
             department_name=dept_name,
+            employee_position=employee_position,
             page_width=col_width,
         )
         right_page = _create_employee_page(
@@ -399,6 +410,7 @@ def generate_dtr_pdf(
             month=month,
             daily_punches=daily_punches,
             department_name=dept_name,
+            employee_position=employee_position,
             page_width=col_width,
         )
 
