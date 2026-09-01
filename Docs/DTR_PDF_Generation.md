@@ -2,25 +2,33 @@
 
 ## Overview
 
-The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation functionality for creating monthly attendance reports with an excel-like table format.
+The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation functionality for creating monthly attendance reports matching the government DTR form layout.
 
 ## Features
 
 ### Report Format
-- **Excel-like table layout**: Each employee gets one page per month with columns:
-  - Day (1-31)
-  - Time IN A.M.
-  - Time OUT A.M.
-  - Time IN P.M.
-  - Time OUT P.M.
+
+- **Government DTR form layout**: Each employee gets one physical page that contains two side-by-side copies of the same DTR.
+- Each copy includes:
+  - Centered `DAILY TIME RECORD` title
+  - Employee `NAME:` and `For the Month of:` fields
+  - Table columns with merged headers:
+    - **Day** (1-31)
+    - **AM** (Arrival, Departure)
+    - **PM** (Arrival, Departure)
+    - **Undertime** (Hr, Min)
+    - **Remarks** (weekday abbreviation)
+  - `TOTAL =` line below the table
+  - Certification text: *"I CERTIFY on my honor..."*
+  - Signature lines for the employee and verifying officer
 
 ### Data Processing
 - **Duplicate handling**: When duplicate punches with the same employee_id, date, and timestamp are found, only the first occurrence is used
 - **4-punch mapping**: The first 4 punches per day are mapped to the 4 time slots:
-  - 1st punch → Time IN A.M.
-  - 2nd punch → Time OUT A.M.
-  - 3rd punch → Time IN P.M.
-  - 4th punch → Time OUT P.M.
+  - 1st punch → AM Arrival
+  - 2nd punch → AM Departure
+  - 3rd punch → PM Arrival
+  - 4th punch → PM Departure
 - **Incomplete records**: Days with fewer than 4 punches show blank cells for missing time slots (marked for investigation)
 - **Extra punches**: Only the first 4 punches are used; additional punches are ignored
 
@@ -50,7 +58,7 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
 
 4. **Generate and Save**
    - Choose the output location and filename
-   - The PDF will be generated with one page per employee
+   - The PDF will be generated with one physical page per employee, containing two side-by-side DTR copies
 
 ### Technical Details
 
@@ -69,36 +77,36 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
 3. Duplicate records are removed (first occurrence kept)
 4. Records are grouped by day and sorted by timestamp
 5. First 4 punches per day are mapped to time slots
-6. PDF is generated with excel-like table layout
+6. PDF is generated with the government DTR form layout (two copies per page)
 
 ## Example Scenarios
 
 ### Complete Day (4 punches)
 ```
 Employee: 1001, Date: 2026-08-01
-08:00:00 → Time IN A.M.
-12:00:00 → Time OUT A.M.
-13:00:00 → Time IN P.M.
-17:00:00 → Time OUT P.M.
+08:00:00 → AM Arrival
+12:00:00 → AM Departure
+13:00:00 → PM Arrival
+17:00:00 → PM Departure
 ```
-Result: All 4 cells filled with times
+Result: All 4 time cells filled with HH:MM times
 
 ### Incomplete Day (2 punches)
 ```
 Employee: 1001, Date: 2026-08-02
-08:05:00 → Time IN A.M.
-12:05:00 → Time OUT A.M.
+08:05:00 → AM Arrival
+12:05:00 → AM Departure
 ```
-Result: IN AM and OUT AM filled, IN PM and OUT PM blank
+Result: AM Arrival and AM Departure filled, PM cells blank
 
 ### Duplicate Punches
 ```
 Employee: 1001, Date: 2026-08-03
-08:00:00 → Time IN A.M. (duplicate)
-08:00:00 → Time IN A.M. (duplicate - ignored)
-12:00:00 → Time OUT A.M.
-13:00:00 → Time IN P.M.
-17:00:00 → Time OUT P.M.
+08:00:00 → AM Arrival (duplicate)
+08:00:00 → AM Arrival (duplicate - ignored)
+12:00:00 → AM Departure
+13:00:00 → PM Arrival
+17:00:00 → PM Departure
 ```
 Result: First 08:00:00 used, second duplicate ignored
 
