@@ -42,6 +42,7 @@ class EmployeesPage(QWidget):
     def __init__(self, controller: DesktopController, parent=None) -> None:
         super().__init__(parent)
         self.controller = controller
+        self._editing_emp_id: str | None = None
         self._build_ui()
         self._refresh()
 
@@ -82,9 +83,18 @@ class EmployeesPage(QWidget):
         self.emp_dept_input.setSpecialValueText("None")
         emp_controls.addWidget(self.emp_dept_input)
 
-        add_emp_btn = QPushButton("Add Employee")
-        add_emp_btn.clicked.connect(self._add_employee)
-        emp_controls.addWidget(add_emp_btn)
+        self.add_emp_btn = QPushButton("Add Employee")
+        self.add_emp_btn.clicked.connect(self._add_employee)
+        emp_controls.addWidget(self.add_emp_btn)
+
+        edit_emp_btn = QPushButton("Edit Selected")
+        edit_emp_btn.clicked.connect(self._edit_employee)
+        emp_controls.addWidget(edit_emp_btn)
+
+        self.cancel_emp_btn = QPushButton("Cancel")
+        self.cancel_emp_btn.clicked.connect(self._cancel_edit)
+        self.cancel_emp_btn.setVisible(False)
+        emp_controls.addWidget(self.cancel_emp_btn)
 
         del_emp_btn = QPushButton("Delete Selected")
         del_emp_btn.clicked.connect(self._delete_employee)
@@ -209,10 +219,48 @@ class EmployeesPage(QWidget):
             QMessageBox.warning(self, "Missing Data", "Employee ID and name are required.")
             return
 
+        if self._editing_emp_id and emp_id != self._editing_emp_id:
+            QMessageBox.warning(self, "Edit Error", "Cannot change Employee ID while editing.")
+            return
+
         dept_id = self.emp_dept_input.value() if self.emp_dept_input.value() > 0 else None
         employee = Employee(device_user_id=emp_id, name=name, full_name=full_name, department_id=dept_id)
         self.controller.registry.upsert_employee(employee)
+        self._clear_employee_inputs()
         self._refresh_employees()
+
+    def _edit_employee(self) -> None:
+        selected = self.emp_table.selectedItems()
+        if not selected:
+            return
+        row = selected[0].row()
+        emp_id = self.emp_table.item(row, 0).text()
+        employee = self.controller.registry.get_employee(emp_id)
+        if employee is None:
+            return
+
+        self._editing_emp_id = employee.device_user_id
+        self.emp_id_input.setText(employee.device_user_id)
+        self.emp_id_input.setEnabled(False)
+        self.emp_name_input.setText(employee.name)
+        self.emp_full_name_input.setText(employee.full_name or "")
+        self.emp_dept_input.setValue(employee.department_id or 0)
+
+        self.add_emp_btn.setText("Update Employee")
+        self.cancel_emp_btn.setVisible(True)
+
+    def _cancel_edit(self) -> None:
+        self._clear_employee_inputs()
+
+    def _clear_employee_inputs(self) -> None:
+        self._editing_emp_id = None
+        self.emp_id_input.clear()
+        self.emp_id_input.setEnabled(True)
+        self.emp_name_input.clear()
+        self.emp_full_name_input.clear()
+        self.emp_dept_input.setValue(0)
+        self.add_emp_btn.setText("Add Employee")
+        self.cancel_emp_btn.setVisible(False)
 
     def _delete_employee(self) -> None:
         selected = self.emp_table.selectedItems()
