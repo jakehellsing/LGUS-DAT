@@ -21,12 +21,15 @@ from pathlib import Path
 from typing import Optional
 
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     PageBreak,
+    Paragraph,
     SimpleDocTemplate,
+    Spacer,
     Table,
     TableStyle,
 )
@@ -115,6 +118,20 @@ def _map_punches_to_daily_slots(
     return daily_punches
 
 
+def _format_time(time_str: Optional[str]) -> str:
+    """Format a HH:MM:SS time string as HH:MM for the DTR."""
+    if not time_str:
+        return ""
+    if len(time_str) >= 5 and time_str[2] == ":":
+        return time_str[:5]
+    return time_str
+
+
+def _day_name(year: int, month: int, day: int) -> str:
+    """Return the abbreviated weekday name (e.g., MON, TUE)."""
+    return date(year, month, day).strftime("%a").upper()
+
+
 def _create_employee_page(
     employee_id: str,
     employee_name: Optional[str],
@@ -124,58 +141,157 @@ def _create_employee_page(
 ) -> list:
     """Create PDF elements for one employee's monthly DTR page."""
     elements = []
-    
-    # Get days in month
     _, num_days = calendar.monthrange(month.year, month.month)
-    
-    # Build table data
-    table_data = [
-        ["Day", "Time IN A.M.", "Time OUT A.M.", "Time IN P.M.", "Time OUT P.M."]
+
+    display_name = employee_name or employee_id
+    month_str = month.strftime("%B %Y")
+
+    # Title
+    title_table = Table(
+        [["DAILY TIME RECORD"]],
+        colWidths=[7 * inch],
+        style=TableStyle(
+            [
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 16),
+                ("BOX", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        ),
+    )
+    elements.append(title_table)
+    elements.append(Spacer(1, 0.15 * inch))
+
+    # Employee info header
+    info_data = [
+        ["NAME:", display_name, "For the Month of:", month_str],
+        ["Official Hours for Arrival & Departure:", "", "Classes schedules:", ""],
     ]
-    
+    info_table = Table(
+        info_data,
+        colWidths=[1.9 * inch, 1.7 * inch, 1.5 * inch, 1.9 * inch],
+        style=TableStyle(
+            [
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("LINEBELOW", (1, 0), (1, 0), 0.5, colors.black),
+                ("LINEBELOW", (3, 0), (3, 0), 0.5, colors.black),
+                ("LINEBELOW", (1, 1), (1, 1), 0.5, colors.black),
+                ("LINEBELOW", (3, 1), (3, 1), 0.5, colors.black),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        ),
+    )
+    elements.append(info_table)
+    elements.append(Spacer(1, 0.15 * inch))
+
+    # DTR table
+    table_data = [
+        ["Day", "AM", "", "PM", "", "Remarks"],
+        ["", "Arrival", "Departure", "Arrival", "Departure", ""],
+    ]
+
+    present_days = 0
     for day in range(1, num_days + 1):
         punches = daily_punches.get(day, DailyPunches(day=day))
+        if any((punches.in_am, punches.out_am, punches.in_pm, punches.out_pm)):
+            present_days += 1
         row = [
             str(day),
-            punches.in_am or "",
-            punches.out_am or "",
-            punches.in_pm or "",
-            punches.out_pm or "",
+            _format_time(punches.in_am),
+            _format_time(punches.out_am),
+            _format_time(punches.in_pm),
+            _format_time(punches.out_pm),
+            _day_name(month.year, month.month, day),
         ]
         table_data.append(row)
-    
-    # Create table
-    table = Table(table_data, colWidths=[0.8*inch, 1.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
-    
-    # Style the table
-    table.setStyle(
-        TableStyle([
-            # Header styling
-            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 10),
-            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-            ("VALIGN", (0, 0), (-1, 0), "MIDDLE"),
-            
-            # Data row styling
-            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-            ("FONTSIZE", (0, 1), (-1, -1), 9),
-            ("ALIGN", (0, 1), (0, -1), "CENTER"),  # Day column centered
-            ("ALIGN", (1, 1), (-1, -1), "CENTER"),  # Time columns centered
-            ("VALIGN", (0, 1), (-1, -1), "MIDDLE"),
-            
-            # Grid lines
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-            ("LINEBELOW", (0, 0), (-1, 0), 1.5, colors.black),  # Thicker header line
-            
-            # Row striping for readability
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
-        ])
+
+    table_data.append(["TOTAL =", "", "", "", "", str(present_days)])
+
+    dtr_table = Table(
+        table_data,
+        colWidths=[0.5 * inch, 1.1 * inch, 1.1 * inch, 1.1 * inch, 1.1 * inch, 0.95 * inch],
     )
-    
-    elements.append(table)
-    
+
+    dtr_table.setStyle(
+        TableStyle(
+            [
+                # Header spanning
+                ("SPAN", (0, 0), (0, 1)),
+                ("SPAN", (1, 0), (2, 0)),
+                ("SPAN", (3, 0), (4, 0)),
+                ("SPAN", (5, 0), (5, 1)),
+                # Header styling
+                ("BACKGROUND", (0, 0), (-1, 1), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 1), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 1), 9),
+                ("ALIGN", (0, 0), (-1, 1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, 1), "MIDDLE"),
+                # Data rows
+                ("FONTNAME", (0, 2), (-1, -2), "Helvetica"),
+                ("FONTSIZE", (0, 2), (-1, -2), 8),
+                ("ALIGN", (0, 2), (-1, -2), "CENTER"),
+                ("VALIGN", (0, 2), (-1, -2), "MIDDLE"),
+                # Total row
+                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, -1), (-1, -1), 9),
+                ("ALIGN", (0, -1), (-1, -1), "CENTER"),
+                ("VALIGN", (0, -1), (-1, -1), "MIDDLE"),
+                # Grid and striping
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                ("LINEBELOW", (0, 1), (-1, 1), 1, colors.black),
+                ("ROWBACKGROUNDS", (0, 2), (-1, -2), [colors.white, colors.lightgrey]),
+            ]
+        )
+    )
+    elements.append(dtr_table)
+    elements.append(Spacer(1, 0.15 * inch))
+
+    # Certification
+    cert_style = ParagraphStyle(
+        "Cert",
+        parent=getSampleStyleSheet()["Normal"],
+        fontSize=9,
+        leading=12,
+        alignment=TA_CENTER,
+    )
+    cert_text = (
+        "I CERTIFY on my honor that the above is a true and correct report of the hours of work performed, "
+        "record of which was made DAILY at the time of arrival and at the time of departure from office."
+    )
+    elements.append(Paragraph(cert_text, cert_style))
+    elements.append(Spacer(1, 0.2 * inch))
+
+    # Signature block
+    sig_data = [
+        ["", "Verified as to the prescribed office hours"],
+        ["", ""],
+        [display_name, ""],
+        ["Employee", "Verifying Officer"],
+    ]
+    sig_table = Table(
+        sig_data,
+        colWidths=[3.5 * inch, 3.5 * inch],
+        style=TableStyle(
+            [
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("LINEBELOW", (0, 1), (0, 1), 0.5, colors.black),
+                ("LINEBELOW", (1, 1), (1, 1), 0.5, colors.black),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ]
+        ),
+    )
+    elements.append(sig_table)
+
     return elements
 
 
