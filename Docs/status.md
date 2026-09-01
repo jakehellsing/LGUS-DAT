@@ -106,3 +106,16 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 || v0.22.0 | 2026-09-01 | Fixed imported attendance data accumulation and added an All Records window for viewing every stored, processed attendance record with search and date filters. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
+
+## Distribution and Installation Plan
+
+To make LGUS-DAT easier to run for HR staff, consider the following distribution formats:
+
+1. **One-file executable (current)**: `lgus-dat-desktop-V{VERSION}.exe` — single file, but slow startup and may trigger antivirus scanners.
+2. **Portable ZIP**: Build as a one-directory PyInstaller bundle, zip `dist/desktop/lgus-dat-desktop-V{VERSION}`, and distribute. Users unzip and run `lgus-dat-desktop-V{VERSION}.exe`.
+3. **Windows installer**: Use Inno Setup or a WiX/MSI project to create `LGUS-DAT-Setup-V{VERSION}.exe` that installs to `%ProgramFiles%`, creates Start Menu shortcuts, and registers an uninstall entry.
+4. **MSIX package**: For Microsoft Store submission or enterprise sideloading.
+5. **Size reduction**: For the PySide6 build, exclude unused heavy modules such as `tkinter` and `_tkinter`, enable UPX compression, and prefer one-directory builds to avoid one-file extraction overhead.
+6. **User-writable data directory**: When installed under `%ProgramFiles%`, store `lgus_registry.db` and settings under `%APPDATA%/LGUS-DAT` so the app works without admin rights.
+
+Recommended near-term: keep the one-file build for quick testing and add a one-directory **portable ZIP** plus an **Inno Setup installer** for end users.
