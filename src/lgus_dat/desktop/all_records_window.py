@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from lgus_dat.desktop.desktop_controller import DesktopController
+from lgus_dat.desktop.widgets.progress_dialog import ProgressDialog
 from lgus_dat.processing.sequence_processor import process_records
 from lgus_dat.ui.date_filter import filter_by_date
 from lgus_dat.ui.search_filter import filter_by_search
@@ -111,18 +112,25 @@ class AllRecordsWindow(QWidget):
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         layout.addWidget(self.table)
 
-    def load_data(self) -> None:
+    def _load_and_process(self) -> list:
         raw_records = self.controller.registry.get_attendance_logs()
         if not raw_records:
-            self.all_records = []
-            self._populate([])
-            return
+            return []
 
         employees = {
             emp.device_user_id: emp.name
             for emp in self.controller.registry.all_employees()
         }
-        self.all_records = process_records(raw_records, name_lookup=employees.get)
+        return process_records(raw_records, name_lookup=employees.get)
+
+    def load_data(self) -> None:
+        records = ProgressDialog(
+            "Loading",
+            "Loading and processing all attendance records...",
+            self,
+        ).run_task(lambda: self._load_and_process())
+
+        self.all_records = records if records is not None else []
         self._apply_filters()
 
     def _apply_filters(self) -> None:
