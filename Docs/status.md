@@ -4,7 +4,7 @@
 
 ### Current Version
 
-`v0.22.0`
+`v0.22.1`
 
 ### Status
 
@@ -104,6 +104,7 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 || v0.20.1 | 2026-08-28 | Fixed data persistence by loading stored attendance logs on startup and repaired Processed tab date range picker. |
 || v0.21.0 | 2026-08-28 | Added progress dialogs, employee full_name, manual status editing, DTR scope selection, and sorting. |
 || v0.22.0 | 2026-09-01 | Fixed imported attendance data accumulation and added an All Records window for viewing every stored, processed attendance record with search and date filters. |
+|| v0.22.1 | 2026-09-01 | Added a performance benchmark and a progress dialog to the All Records window so loading and processing large registries does not freeze the UI. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 

@@ -125,9 +125,9 @@ To build the PySide6 desktop app locally with PyInstaller:
 
 ```bash
 pip install -e ".[build]"
-pyinstaller --onefile --windowed --name lgus-dat-desktop-V0.22.0 --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
+pyinstaller --onefile --windowed --name lgus-dat-desktop-V0.22.1 --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
 ```
 
 Replace `V0.22.0` with the current version from `pyproject.toml`.
 
-The output will be in `dist/desktop/lgus-dat-desktop-V0.22.0.exe` (Windows) or `dist/desktop/lgus-dat-desktop-V0.22.0` (Linux).
+The output will be in `dist/desktop/lgus-dat-desktop-V0.22.1.exe` (Windows) or `dist/desktop/lgus-dat-desktop-V0.22.1` (Linux).
