@@ -116,6 +116,73 @@ class EmployeeEditDialog(QDialog):
         self.accept()
 
 
+class EmployeeAddDialog(QDialog):
+    """Modal dialog for adding a new employee."""
+
+    def __init__(self, controller: DesktopController, parent=None) -> None:
+        super().__init__(parent)
+        self.controller = controller
+        self.setWindowTitle("Add Employee")
+        self.setModal(True)
+        self._build_ui()
+
+    def _build_ui(self) -> None:
+        layout = QFormLayout(self)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        self.id_edit = QLineEdit()
+        layout.addRow("Employee ID:", self.id_edit)
+
+        self.name_edit = QLineEdit()
+        layout.addRow("Name:", self.name_edit)
+
+        self.full_name_edit = QLineEdit()
+        layout.addRow("Full Name (DTR only):", self.full_name_edit)
+
+        self.position_combo = QComboBox()
+        self.position_combo.addItem("None", None)
+        for pos in self.controller.registry.all_positions():
+            self.position_combo.addItem(pos, pos)
+        layout.addRow("Position (DTR only):", self.position_combo)
+
+        self.dept_combo = QComboBox()
+        self.dept_combo.addItem("None", None)
+        for dept in self.controller.registry.all_departments():
+            self.dept_combo.addItem(f"{dept.department_id} - {dept.name}", dept.department_id)
+        layout.addRow("Department:", self.dept_combo)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self._save)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def _save(self) -> None:
+        emp_id = self.id_edit.text().strip()
+        name = self.name_edit.text().strip()
+        if not emp_id or not name:
+            QMessageBox.warning(self, "Missing Data", "Employee ID and name are required.")
+            return
+
+        if self.controller.registry.get_employee(emp_id):
+            QMessageBox.warning(self, "Validation", f"Employee {emp_id} already exists.")
+            return
+
+        full_name = self.full_name_edit.text().strip() or None
+        position = self.position_combo.currentData()
+        dept_id = self.dept_combo.currentData()
+
+        employee = Employee(
+            device_user_id=emp_id,
+            name=name,
+            full_name=full_name,
+            position=position,
+            department_id=dept_id,
+        )
+        self.controller.registry.upsert_employee(employee)
+        self.accept()
+
+
 class EmployeesPage(QWidget):
     """Page for managing employees and departments."""
 
@@ -140,55 +207,67 @@ class EmployeesPage(QWidget):
         self.employees_tab = QWidget()
         emp_layout = QVBoxLayout(self.employees_tab)
 
-        emp_controls = QHBoxLayout()
-        emp_controls.setSpacing(12)
+        # Filter controls
+        emp_filter_controls = QHBoxLayout()
+        emp_filter_controls.setSpacing(12)
 
         self.emp_id_input = QLineEdit()
-        self.emp_id_input.setPlaceholderText("Employee ID")
+        self.emp_id_input.setPlaceholderText("Filter by ID")
         self.emp_id_input.setMaximumWidth(120)
-        emp_controls.addWidget(self.emp_id_input)
+        emp_filter_controls.addWidget(self.emp_id_input)
 
         self.emp_name_input = QLineEdit()
-        self.emp_name_input.setPlaceholderText("Employee Name")
-        emp_controls.addWidget(self.emp_name_input)
+        self.emp_name_input.setPlaceholderText("Filter by Name")
+        emp_filter_controls.addWidget(self.emp_name_input)
 
         self.emp_full_name_input = QLineEdit()
-        self.emp_full_name_input.setPlaceholderText("Full Name (DTR only)")
-        emp_controls.addWidget(self.emp_full_name_input)
+        self.emp_full_name_input.setPlaceholderText("Filter by Full Name")
+        emp_filter_controls.addWidget(self.emp_full_name_input)
 
         self.emp_position_combo = QComboBox()
         self.emp_position_combo.setMinimumWidth(140)
-        emp_controls.addWidget(self.emp_position_combo)
+        emp_filter_controls.addWidget(self.emp_position_combo)
 
-        self.emp_dept_input = QSpinBox()
-        self.emp_dept_input.setMinimum(0)
-        self.emp_dept_input.setMaximum(999999)
-        self.emp_dept_input.setSpecialValueText("None")
-        emp_controls.addWidget(self.emp_dept_input)
+        self.emp_dept_filter = QComboBox()
+        self.emp_dept_filter.setMinimumWidth(160)
+        emp_filter_controls.addWidget(self.emp_dept_filter)
+
+        filter_btn = QPushButton("Filter")
+        filter_btn.clicked.connect(self._filter_employees)
+        emp_filter_controls.addWidget(filter_btn)
+
+        clear_filter_btn = QPushButton("Clear")
+        clear_filter_btn.clicked.connect(self._clear_employee_filters)
+        emp_filter_controls.addWidget(clear_filter_btn)
+
+        emp_filter_controls.addStretch()
+        emp_layout.addLayout(emp_filter_controls)
+
+        # Action controls
+        emp_action_controls = QHBoxLayout()
+        emp_action_controls.setSpacing(12)
 
         self.add_emp_btn = QPushButton("Add Employee")
-        self.add_emp_btn.clicked.connect(self._add_employee)
-        emp_controls.addWidget(self.add_emp_btn)
+        self.add_emp_btn.clicked.connect(self._open_add_employee_dialog)
+        emp_action_controls.addWidget(self.add_emp_btn)
 
         edit_emp_btn = QPushButton("Edit Selected")
         edit_emp_btn.clicked.connect(self._edit_employee)
-        emp_controls.addWidget(edit_emp_btn)
+        emp_action_controls.addWidget(edit_emp_btn)
 
         del_emp_btn = QPushButton("Delete Selected")
         del_emp_btn.clicked.connect(self._delete_employee)
-        emp_controls.addWidget(del_emp_btn)
+        emp_action_controls.addWidget(del_emp_btn)
 
-        emp_controls.addStretch()
-        emp_layout.addLayout(emp_controls)
+        emp_action_controls.addStretch()
 
-        emp_sort_layout = QHBoxLayout()
-        emp_sort_layout.addWidget(QLabel("Sort by:"))
+        emp_action_controls.addWidget(QLabel("Sort by:"))
         self.emp_sort_combo = QComboBox()
         self.emp_sort_combo.addItems(["ID", "Name"])
         self.emp_sort_combo.currentIndexChanged.connect(self._refresh_employees)
-        emp_sort_layout.addWidget(self.emp_sort_combo)
-        emp_sort_layout.addStretch()
-        emp_layout.addLayout(emp_sort_layout)
+        emp_action_controls.addWidget(self.emp_sort_combo)
+
+        emp_layout.addLayout(emp_action_controls)
 
         self.emp_table = QTableWidget()
         self.emp_table.setColumnCount(5)
@@ -290,21 +369,35 @@ class EmployeesPage(QWidget):
 
     def _refresh(self) -> None:
         """Refresh all tables from the registry."""
+        self._load_employee_filter_combos()
         self._refresh_employees()
         self._refresh_departments()
-        self._load_employee_position_combo()
         self._refresh_positions()
 
-    def _load_employee_position_combo(self) -> None:
-        """Populate the employee position dropdown from the master list."""
-        current = self.emp_position_combo.currentData()
+    def _load_employee_filter_combos(self) -> None:
+        """Populate the employee filter dropdowns from the master lists."""
+        # Position filter: Any, None, positions
+        position_text = self.emp_position_combo.currentText() or "Any"
         self.emp_position_combo.clear()
+        self.emp_position_combo.addItem("Any", None)
         self.emp_position_combo.addItem("None", None)
         for pos in self.controller.registry.all_positions():
             self.emp_position_combo.addItem(pos, pos)
         for i in range(self.emp_position_combo.count()):
-            if self.emp_position_combo.itemData(i, Qt.UserRole) == current:
+            if self.emp_position_combo.itemText(i) == position_text:
                 self.emp_position_combo.setCurrentIndex(i)
+                break
+
+        # Department filter: Any, None, departments
+        dept_text = self.emp_dept_filter.currentText() or "Any"
+        self.emp_dept_filter.clear()
+        self.emp_dept_filter.addItem("Any", None)
+        self.emp_dept_filter.addItem("None", None)
+        for dept in self.controller.registry.all_departments():
+            self.emp_dept_filter.addItem(f"{dept.department_id} - {dept.name}", dept.department_id)
+        for i in range(self.emp_dept_filter.count()):
+            if self.emp_dept_filter.itemText(i) == dept_text:
+                self.emp_dept_filter.setCurrentIndex(i)
                 break
 
     def _refresh_positions(self) -> None:
@@ -361,9 +454,44 @@ class EmployeesPage(QWidget):
             self.controller.registry.delete_position(name)
             self._refresh()
 
+    def _matches_employee_query(self, emp: Employee) -> bool:
+        """Check whether an employee matches the active filter controls."""
+        if self.emp_id_input.text().strip():
+            q = self.emp_id_input.text().strip().lower()
+            if q not in emp.device_user_id.lower():
+                return False
+
+        if self.emp_name_input.text().strip():
+            q = self.emp_name_input.text().strip().lower()
+            if q not in emp.name.lower():
+                return False
+
+        if self.emp_full_name_input.text().strip():
+            q = self.emp_full_name_input.text().strip().lower()
+            if q not in (emp.full_name or "").lower():
+                return False
+
+        position_index = self.emp_position_combo.currentIndex()
+        if position_index == 1:  # None
+            if emp.position is not None:
+                return False
+        elif position_index > 1:
+            if emp.position != self.emp_position_combo.currentData():
+                return False
+
+        dept_index = self.emp_dept_filter.currentIndex()
+        if dept_index == 1:  # None
+            if emp.department_id is not None:
+                return False
+        elif dept_index > 1:
+            if emp.department_id != self.emp_dept_filter.currentData():
+                return False
+
+        return True
+
     def _refresh_employees(self) -> None:
-        """Refresh the employee table, sorted by the current selection."""
-        employees = self.controller.registry.all_employees()
+        """Refresh the employee table, sorted and filtered by the current selection."""
+        employees = [emp for emp in self.controller.registry.all_employees() if self._matches_employee_query(emp)]
         sort_by = self.emp_sort_combo.currentText()
 
         if sort_by == "ID":
@@ -395,20 +523,14 @@ class EmployeesPage(QWidget):
             self.dept_table.setItem(row, 0, QTableWidgetItem(str(dept.department_id)))
             self.dept_table.setItem(row, 1, QTableWidgetItem(dept.name))
 
-    def _add_employee(self) -> None:
-        emp_id = self.emp_id_input.text().strip()
-        name = self.emp_name_input.text().strip()
-        full_name = self.emp_full_name_input.text().strip() or None
-        position = self.emp_position_combo.currentData()
-        if not emp_id or not name:
-            QMessageBox.warning(self, "Missing Data", "Employee ID and name are required.")
-            return
-
-        dept_id = self.emp_dept_input.value() if self.emp_dept_input.value() > 0 else None
-        employee = Employee(device_user_id=emp_id, name=name, full_name=full_name, position=position, department_id=dept_id)
-        self.controller.registry.upsert_employee(employee)
-        self._clear_employee_inputs()
+    def _open_add_employee_dialog(self) -> None:
+        dialog = EmployeeAddDialog(self.controller, self)
+        dialog.exec()
         self._refresh()
+
+    def _filter_employees(self) -> None:
+        """Apply the current filter controls and refresh the table."""
+        self._refresh_employees()
 
     def _edit_employee(self) -> None:
         selected = self.emp_table.selectedItems()
@@ -425,12 +547,14 @@ class EmployeesPage(QWidget):
         dialog.exec()
         self._refresh()
 
-    def _clear_employee_inputs(self) -> None:
+    def _clear_employee_filters(self) -> None:
+        """Clear all employee filter controls and refresh the table."""
         self.emp_id_input.clear()
         self.emp_name_input.clear()
         self.emp_full_name_input.clear()
         self.emp_position_combo.setCurrentIndex(0)
-        self.emp_dept_input.setValue(0)
+        self.emp_dept_filter.setCurrentIndex(0)
+        self._refresh_employees()
 
     def _delete_employee(self) -> None:
         selected = self.emp_table.selectedItems()
