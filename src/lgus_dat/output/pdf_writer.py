@@ -156,7 +156,6 @@ def _create_employee_page(
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, -1), 16),
-                ("BOX", (0, 0), (-1, -1), 1, colors.black),
             ]
         ),
     )
@@ -165,22 +164,20 @@ def _create_employee_page(
 
     # Employee info header
     info_data = [
-        ["NAME:", display_name, "For the Month of:", month_str],
-        ["Official Hours for Arrival & Departure:", "", "Classes schedules:", ""],
+        ["NAME:", display_name],
+        ["For the Month of:", month_str],
     ]
     info_table = Table(
         info_data,
-        colWidths=[1.9 * inch, 1.7 * inch, 1.5 * inch, 1.9 * inch],
+        colWidths=[1.3 * inch, 5.7 * inch],
         style=TableStyle(
             [
                 ("ALIGN", (0, 0), (-1, -1), "LEFT"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
                 ("LINEBELOW", (1, 0), (1, 0), 0.5, colors.black),
-                ("LINEBELOW", (3, 0), (3, 0), 0.5, colors.black),
                 ("LINEBELOW", (1, 1), (1, 1), 0.5, colors.black),
-                ("LINEBELOW", (3, 1), (3, 1), 0.5, colors.black),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ]
@@ -191,8 +188,8 @@ def _create_employee_page(
 
     # DTR table
     table_data = [
-        ["Day", "AM", "", "PM", "", "Remarks"],
-        ["", "Arrival", "Departure", "Arrival", "Departure", ""],
+        ["Day", "AM", "", "PM", "", "Undertime", "", "Remarks"],
+        ["", "Arrival", "Departure", "Arrival", "Departure", "Hr", "Min", ""],
     ]
 
     present_days = 0
@@ -206,15 +203,17 @@ def _create_employee_page(
             _format_time(punches.out_am),
             _format_time(punches.in_pm),
             _format_time(punches.out_pm),
+            "",
+            "",
             _day_name(month.year, month.month, day),
         ]
         table_data.append(row)
 
-    table_data.append(["TOTAL =", "", "", "", "", str(present_days)])
+    table_data.append(["TOTAL =", "", "", "", "", "", "", str(present_days)])
 
     dtr_table = Table(
         table_data,
-        colWidths=[0.5 * inch, 1.1 * inch, 1.1 * inch, 1.1 * inch, 1.1 * inch, 0.95 * inch],
+        colWidths=[0.45 * inch, 0.85 * inch, 0.85 * inch, 0.85 * inch, 0.85 * inch, 0.55 * inch, 0.55 * inch, 0.85 * inch],
     )
 
     dtr_table.setStyle(
@@ -224,7 +223,8 @@ def _create_employee_page(
                 ("SPAN", (0, 0), (0, 1)),
                 ("SPAN", (1, 0), (2, 0)),
                 ("SPAN", (3, 0), (4, 0)),
-                ("SPAN", (5, 0), (5, 1)),
+                ("SPAN", (5, 0), (6, 0)),
+                ("SPAN", (7, 0), (7, 1)),
                 # Header styling
                 ("BACKGROUND", (0, 0), (-1, 1), colors.grey),
                 ("TEXTCOLOR", (0, 0), (-1, 1), colors.whitesmoke),
@@ -269,24 +269,27 @@ def _create_employee_page(
 
     # Signature block
     sig_data = [
-        ["", "Verified as to the prescribed office hours"],
-        ["", ""],
-        [display_name, ""],
-        ["Employee", "Verifying Officer"],
+        [""],
+        [display_name],
+        ["Employee"],
+        [""],
+        ["Verified as to the prescribed office hours"],
+        [""],
+        ["Verifying Officer"],
     ]
     sig_table = Table(
         sig_data,
-        colWidths=[3.5 * inch, 3.5 * inch],
+        colWidths=[7 * inch],
         style=TableStyle(
             [
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
                 ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("LINEBELOW", (0, 1), (0, 1), 0.5, colors.black),
-                ("LINEBELOW", (1, 1), (1, 1), 0.5, colors.black),
-                ("TOPPADDING", (0, 0), (-1, -1), 2),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LINEBELOW", (0, 0), (0, 0), 0.5, colors.black),
+                ("LINEBELOW", (0, 5), (0, 5), 0.5, colors.black),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
             ]
         ),
     )
