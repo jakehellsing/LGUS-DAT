@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -67,12 +68,15 @@ class EmployeeEditDialog(QDialog):
         self.full_name_edit = QLineEdit(self.employee.full_name or "")
         layout.addRow("Full Name (DTR only):", self.full_name_edit)
 
-        self.dept_input = QSpinBox()
-        self.dept_input.setMinimum(0)
-        self.dept_input.setMaximum(999999)
-        self.dept_input.setSpecialValueText("None")
-        self.dept_input.setValue(self.employee.department_id or 0)
-        layout.addRow("Department ID:", self.dept_input)
+        self.dept_combo = QComboBox()
+        self.dept_combo.addItem("None", None)
+        for dept in self.controller.registry.all_departments():
+            self.dept_combo.addItem(f"{dept.department_id} - {dept.name}", dept.department_id)
+        for i in range(self.dept_combo.count()):
+            if self.dept_combo.itemData(i, Qt.UserRole) == self.employee.department_id:
+                self.dept_combo.setCurrentIndex(i)
+                break
+        layout.addRow("Department:", self.dept_combo)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self._save)
@@ -86,7 +90,7 @@ class EmployeeEditDialog(QDialog):
             return
 
         full_name = self.full_name_edit.text().strip() or None
-        dept_id = self.dept_input.value() if self.dept_input.value() > 0 else None
+        dept_id = self.dept_combo.currentData()
 
         updated = replace(
             self.employee,
