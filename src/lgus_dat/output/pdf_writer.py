@@ -176,6 +176,14 @@ def _create_employee_page(
         leading=9,
         alignment=TA_CENTER,
     )
+    total_label_style = ParagraphStyle(
+        "TotalLabel",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=8,
+        leading=9,
+        alignment=TA_CENTER,
+    )
     cert_text = (
         "I CERTIFY on my honor that the above is a true and correct report of the hours of work performed, "
         "record of which was made DAILY at the time of arrival and at the time of departure from office."
@@ -227,7 +235,7 @@ def _create_employee_page(
         ]
         table_data.append(row)
 
-    table_data.append(["TOTAL =", "", "", "", "", "", "", str(present_days)])
+    table_data.append([Paragraph("TOTAL =", total_label_style), "", "", "", "", "", "", str(present_days)])
 
     base_dtr_width = 3.7 * inch
     base_col_widths = [
