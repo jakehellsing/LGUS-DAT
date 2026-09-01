@@ -176,13 +176,13 @@ def _create_employee_page(
         leading=9,
         alignment=TA_CENTER,
     )
-    total_label_style = ParagraphStyle(
-        "TotalLabel",
+    total_line_style = ParagraphStyle(
+        "TotalLine",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
         fontSize=8,
-        leading=9,
-        alignment=TA_CENTER,
+        leading=10,
+        alignment=TA_LEFT,
     )
     cert_text = (
         "I CERTIFY on my honor that the above is a true and correct report of the hours of work performed, "
@@ -218,11 +218,8 @@ def _create_employee_page(
         ["", "Arrival", "Departure", "Arrival", "Departure", "Hr", "Min", ""],
     ]
 
-    present_days = 0
     for day in range(1, num_days + 1):
         punches = daily_punches.get(day, DailyPunches(day=day))
-        if any((punches.in_am, punches.out_am, punches.in_pm, punches.out_pm)):
-            present_days += 1
         row = [
             str(day),
             _format_time(punches.in_am),
@@ -235,7 +232,7 @@ def _create_employee_page(
         ]
         table_data.append(row)
 
-    table_data.append([Paragraph("TOTAL =", total_label_style), "", "", "", "", "", "", str(present_days)])
+    total_para = Paragraph("TOTAL =", total_line_style)
 
     base_dtr_width = 3.7 * inch
     base_col_widths = [
@@ -318,6 +315,7 @@ def _create_employee_page(
         [title_para],
         [info_table],
         [dtr_table],
+        [total_para],
         [Paragraph(cert_text, cert_style)],
         [sig_table],
     ]
