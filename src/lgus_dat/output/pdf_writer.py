@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
@@ -162,6 +162,20 @@ def _create_employee_page(
         leading=9,
         alignment=TA_CENTER,
     )
+    info_style = ParagraphStyle(
+        "Info",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10,
+        alignment=TA_LEFT,
+    )
+    sig_style = ParagraphStyle(
+        "Sig",
+        parent=styles["Normal"],
+        fontSize=7,
+        leading=9,
+        alignment=TA_CENTER,
+    )
     cert_text = (
         "I CERTIFY on my honor that the above is a true and correct report of the hours of work performed, "
         "record of which was made DAILY at the time of arrival and at the time of departure from office."
@@ -171,19 +185,17 @@ def _create_employee_page(
     title_para = Paragraph("DAILY TIME RECORD", title_style)
 
     # Employee info header
+    label_width = 0.85 * inch
     info_data = [
-        ["NAME:", display_name],
-        ["For the Month of:", month_str],
+        [Paragraph("NAME:", info_style), Paragraph(display_name, info_style)],
+        [Paragraph("For the Month of:", info_style), Paragraph(month_str, info_style)],
     ]
     info_table = Table(
         info_data,
-        colWidths=[0.55 * inch, page_width - 0.55 * inch],
+        colWidths=[label_width, page_width - label_width],
         style=TableStyle(
             [
-                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
                 ("LINEBELOW", (1, 0), (1, 0), 0.5, colors.black),
                 ("LINEBELOW", (1, 1), (1, 1), 0.5, colors.black),
                 ("TOPPADDING", (0, 0), (-1, -1), 1),
@@ -272,22 +284,19 @@ def _create_employee_page(
     # Signature block
     sig_data = [
         [""],
-        [display_name],
-        ["Employee"],
+        [Paragraph(display_name, sig_style)],
+        [Paragraph("Employee", sig_style)],
         [""],
-        ["Verified as to the prescribed office hours"],
+        [Paragraph("Verified as to the prescribed office hours", sig_style)],
         [""],
-        ["Verifying Officer"],
+        [Paragraph("Verifying Officer", sig_style)],
     ]
     sig_table = Table(
         sig_data,
         colWidths=[page_width],
         style=TableStyle(
             [
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 7),
                 ("LINEBELOW", (0, 0), (0, 0), 0.5, colors.black),
                 ("LINEBELOW", (0, 5), (0, 5), 0.5, colors.black),
                 ("TOPPADDING", (0, 0), (-1, -1), 1),
