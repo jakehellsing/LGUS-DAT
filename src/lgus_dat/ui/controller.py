@@ -54,9 +54,9 @@ class UIController:
         new_count = 0
         if records:
             new_count = self.registry.import_attendance_logs(records, path)
-        
+
         self.state.current_input_path = path
-        self.state.parsed_records = records
+        self.state.parsed_records = self.registry.get_attendance_logs()
         
         return path, records, errors, new_count
 

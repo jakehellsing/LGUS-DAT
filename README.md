@@ -31,6 +31,7 @@ src/
     desktop/        New PySide6 desktop interface
       pages/        Page views (dashboard, import, processed, reports, employees, settings)
       widgets/      Reusable widgets (kpi_card, data_table)
+      all_records_window.py  Standalone window for viewing all accumulated records
       desktop_controller.py  Adapter for UIController
       main_window.py         Main window with sidebar navigation
       app.py                 PySide6 entry point
@@ -84,6 +85,7 @@ The PySide6 desktop UI lets you import `.dat` files, process them into IN/OUT ro
 **PySide6 Desktop Features:**
 - Sidebar navigation with Dashboard, Import, Processed, Reports, Employees, and Settings
 - Light and dark themes
+- **All Records window** for viewing every stored, processed attendance record with search and date filters
 - Dashboard KPI cards (total employees, imported logs, processed records, unpaired IN)
 - Month-scoped processing to avoid reprocessing all stored data
 - Date and time range filtering for precise datetime selection
@@ -123,9 +125,9 @@ To build the PySide6 desktop app locally with PyInstaller:
 
 ```bash
 pip install -e ".[build]"
-pyinstaller --onefile --windowed --name lgus-dat-desktop-V0.21.0 --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
+pyinstaller --onefile --windowed --name lgus-dat-desktop-V0.22.0 --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
 ```
 
-Replace `V0.21.0` with the current version from `pyproject.toml`.
+Replace `V0.22.0` with the current version from `pyproject.toml`.
 
-The output will be in `dist/desktop/lgus-dat-desktop-V0.21.0.exe` (Windows) or `dist/desktop/lgus-dat-desktop-V0.21.0` (Linux).
+The output will be in `dist/desktop/lgus-dat-desktop-V0.22.0.exe` (Windows) or `dist/desktop/lgus-dat-desktop-V0.22.0` (Linux).

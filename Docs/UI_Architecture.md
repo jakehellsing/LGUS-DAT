@@ -32,8 +32,9 @@ src/lgus_dat/ui/
 
 src/lgus_dat/desktop/  # PySide6 desktop interface
   app.py               # Entry point and QApplication setup
-  main_window.py       # Main window with sidebar and stacked pages
+  main_window.py       # Main window with sidebar, menu bar, and stacked pages
   desktop_controller.py # Adapter wrapping UIController
+  all_records_window.py # Standalone window for viewing all accumulated records
   theme.py             # Light/dark theme definitions
   pages/               # Page views
     dashboard_page.py  # KPIs and quick actions
@@ -297,6 +298,10 @@ def test_controller_workflow():
 - Displays department names instead of numeric IDs
 - Updated search functionality to work with department names
 - Improved filtering by department name
+
+### All Records Window
+
+A standalone `AllRecordsWindow` is available from **View → All Records** in the main menu bar. It loads every attendance log directly from `AttendanceRegistry`, processes them into IN/OUT rows, and provides the same search and date-range filters as the Processed page. Because it reads from the persisted registry rather than the in-memory `UIState`, it always reflects the full accumulated dataset and can be refreshed after new imports without requiring the workflow-driven Processed tab.
 
 ## Future Enhancements
 

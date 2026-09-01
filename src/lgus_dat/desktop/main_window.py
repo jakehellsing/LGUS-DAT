@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from lgus_dat.desktop.all_records_window import AllRecordsWindow
 from lgus_dat.desktop.desktop_controller import DesktopController
 from lgus_dat.desktop.pages.dashboard_page import DashboardPage
 from lgus_dat.desktop.pages.employees_page import EmployeesPage
@@ -32,6 +33,11 @@ class MainWindow(QMainWindow):
         self.controller = controller
         self.setWindowTitle("LGUS-DAT — MB10-VL Attendance Processor")
         self.setMinimumSize(1200, 800)
+
+        view_menu = self.menuBar().addMenu("View")
+        all_records_action = view_menu.addAction("All Records")
+        all_records_action.triggered.connect(self._open_all_records)
+        self.all_records_window: AllRecordsWindow | None = None
 
         # Central widget and layout
         central = QWidget()
@@ -129,6 +135,14 @@ class MainWindow(QMainWindow):
         """Handle the process records signal from the import page."""
         self.processed_page.refresh()
         self._on_nav_clicked("Processed")
+
+    def _open_all_records(self) -> None:
+        """Open the window that shows every stored attendance record."""
+        if self.all_records_window is None:
+            self.all_records_window = AllRecordsWindow(self.controller, self)
+        self.all_records_window.show()
+        self.all_records_window.raise_()
+        self.all_records_window.activateWindow()
 
     def _on_theme_toggle(self) -> None:
         """Toggle between light and dark themes."""

@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.21.0`
+`v0.22.0`
 
 ### Status
 
-Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package providing a dashboard, import, processed records with date filters, reports, employees, and settings pages. Raw attendance logs are now persisted and loaded on startup, and month-scoped processing allows users to process only a selected month. The legacy Tkinter UI remains in `ui/`.
+Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package providing a dashboard, import, processed records with date filters, reports, employees, and settings pages. Raw attendance logs are now persisted and loaded on startup, and month-scoped processing allows users to process only a selected month. A new **All Records** window loads every stored log directly from the registry, processes it on demand, and provides search and date filters so users always see accumulated data. The legacy Tkinter UI remains in `ui/`.
 
 ### Implemented
 
@@ -57,6 +57,7 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] Reports page for DTR PDF, CSV, and attlog export
 - [x] Employees and departments management page
 - [x] Light and dark theme support for PySide6 UI
+- [x] Standalone **All Records** window with search and date filters for viewing all accumulated, processed attendance records
 - [x] Attendance log persistence and automatic reload on startup
 - [x] Manual IN/OUT status editing with `MANUAL_EDIT` flag in the PySide6 UI
 - [x] DTR PDF scope selection by all employees, department, or specific employees
@@ -102,5 +103,6 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 || v0.20.0 | 2026-08-28 | Implemented month-scoped processing and polished PySide6 UI. |
 || v0.20.1 | 2026-08-28 | Fixed data persistence by loading stored attendance logs on startup and repaired Processed tab date range picker. |
 || v0.21.0 | 2026-08-28 | Added progress dialogs, employee full_name, manual status editing, DTR scope selection, and sorting. |
+|| v0.22.0 | 2026-09-01 | Fixed imported attendance data accumulation and added an All Records window for viewing every stored, processed attendance record with search and date filters. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
