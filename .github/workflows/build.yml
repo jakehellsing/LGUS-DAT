@@ -15,11 +15,9 @@ jobs:
         include:
           - os: windows-latest
             name: windows
-            ext: .exe
             windowed: --windowed
           - os: ubuntu-latest
             name: linux
-            ext: ""
             windowed: ""
     runs-on: ${{ matrix.os }}
     steps:
@@ -47,10 +45,16 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          pyinstaller --onefile ${{ matrix.windowed }} --name "lgus-dat-desktop-V${{ steps.version.outputs.VERSION }}" --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
+          pyinstaller --onedir ${{ matrix.windowed }} --name "lgus-dat-desktop-V${{ steps.version.outputs.VERSION }}" --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
+
+      - name: Zip bundle
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          python -c "import shutil; shutil.make_archive(f'dist/desktop/lgus-dat-desktop-V${VERSION}', 'zip', f'dist/desktop/lgus-dat-desktop-V${VERSION}')"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: lgus-dat-desktop-${{ matrix.name }}
-          path: dist/desktop/lgus-dat-desktop-V${{ steps.version.outputs.VERSION }}${{ matrix.ext }}
+          path: dist/desktop/lgus-dat-desktop-V${{ steps.version.outputs.VERSION }}.zip
