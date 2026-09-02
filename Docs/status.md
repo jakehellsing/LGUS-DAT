@@ -10,13 +10,13 @@
 
 Added an **Attendance Filing** page to the PySide6 desktop UI with three tabs: **Holidays** for system-wide holiday dates, **Leave Types** for a master status list, and **File Leave/Status** for per-employee date-range filings. The DTR PDF now looks up these holidays and filings when generating the monthly report and prints the status label(s) in the `Remarks` column; when both a holiday and an employee filing apply, the labels are combined. If no holiday or filing exists for a day, the column still shows the weekday abbreviation.
 
-Added `head_position` to the `Department` model. The DTR PDF signature line now prints the department head name and position, replacing the generic `Verifying Officer` label. Both the PySide6 and Tkinter department management UIs include a `Head Position` field. The head name and position are stored in the local SQLite registry and do not affect the binary `department.dat` import/export.
+Added `head_position` to the `Department` model. The DTR PDF signature line now prints the department head name and position, replacing the generic `Verifying Officer` label. The PySide6 Employees page includes a `Head Position` field. The head name and position are stored in the local SQLite registry and do not affect the binary `department.dat` import/export.
 
 The DTR PDF now calculates daily undertime for Monday-Friday workdays against the official 8:00 AM - 5:00 PM schedule. Late arrivals after 8:00 AM and early departures before 5:00 PM are counted in whole minutes and shown in the Undertime Hr/Min columns. Weekends are excluded and two-punch days use the final departure as the end time.
 
-Added a `head_name` field to the `Department` model and registry. The DTR PDF "Verifying Officer" signature line is now derived from the employee's department head name. Both the PySide6 Employees page and the legacy Tkinter Management dialog allow viewing and editing the department head name. The binary `department.dat` importer/exporter is unchanged because the device format does not carry head metadata; the value is stored in the local SQLite registry only.
+Added a `head_name` field to the `Department` model and registry. The DTR PDF "Verifying Officer" signature line is now derived from the employee's department head name. The PySide6 Employees page allows viewing and editing the department head name. The binary `department.dat` importer/exporter is unchanged because the device format does not carry head metadata; the value is stored in the local SQLite registry only.
 
-Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package providing a dashboard, import, processed records with date filters, reports, employees, and settings pages. Raw attendance logs are now persisted and loaded on startup, and month-scoped processing allows users to process only a selected month. A new **All Records** window loads every stored log directly from the registry, processes it on demand, and provides search and date filters so users always see accumulated data. The employee edit dialog in the PySide6 Employees page is now a modal Save dialog and uses a department dropdown and a position dropdown for assignment. The position dropdown is fed by a master Positions tab with full CRUD (add, rename, delete). The Employees tab top row has been converted from an inline add form into search filters for ID, name, full name, position, and department; adding an employee now opens a dedicated `Add Employee` dialog. The DTR PDF report now matches the reference government form with two side-by-side copies per page, a `DAILY TIME RECORD` title, AM/PM/Undertime/Remarks table, certification text, and signature block, and renders an employee's position below their name when set. Employee table refreshes now fully clear old rows before repopulating to prevent mixed/stale data when filtering, and numeric columns sort as numbers when clicking column headers. A Refresh button was also added to the Employees tab. The legacy Tkinter UI remains in `ui/`.
+Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package providing a dashboard, import, processed records with date filters, reports, employees, and settings pages. Raw attendance logs are now persisted and loaded on startup, and month-scoped processing allows users to process only a selected month. A new **All Records** window loads every stored log directly from the registry, processes it on demand, and provides search and date filters so users always see accumulated data. The employee edit dialog in the PySide6 Employees page is now a modal Save dialog and uses a department dropdown and a position dropdown for assignment. The position dropdown is fed by a master Positions tab with full CRUD (add, rename, delete). The Employees tab top row has been converted from an inline add form into search filters for ID, name, full name, position, and department; adding an employee now opens a dedicated `Add Employee` dialog. The DTR PDF report now matches the reference government form with two side-by-side copies per page, a `DAILY TIME RECORD` title, AM/PM/Undertime/Remarks table, certification text, and signature block, and renders an employee's position below their name when set. Employee table refreshes now fully clear old rows before repopulating to prevent mixed/stale data when filtering, and numeric columns sort as numbers when clicking column headers. A Refresh button was also added to the Employees tab. The legacy Tkinter UI has been removed; shared application logic now lives in `src/lgus_dat/core/`. Build artifacts, stale `.spec` files, and unused imports were cleaned up; the GitHub Actions workflow now builds the PySide6 desktop app as `lgus-dat-desktop-V{VERSION}`. The `requirements.txt` and `pyproject.toml` dependencies now list only the packages required by the PySide6 desktop and CLI (`PySide6`, `reportlab`, `pytest`).
 
 ### Implemented
 
@@ -28,7 +28,7 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] CLI entry point (`src/lgus_dat/cli/commands.py`)
 - [x] Automated tests (`tests/test_*.py`)
 - [x] Packaging configuration (`pyproject.toml`, `requirements.txt`)
-- [x] Desktop tkinter UI (`src/lgus_dat/ui/app.py`) with open/process/save workflow
+- [x] PySide6 desktop UI (`src/lgus_dat/desktop/app.py`) with open/process/save workflow
 - [x] `user.dat` employee master importer (`src/lgus_dat/importers/user_parser.py`)
 - [x] `department.dat` importer (`src/lgus_dat/importers/department_parser.py`)
 - [x] SQLite employee/department registry (`src/lgus_dat/persistence/registry.py`)
@@ -39,7 +39,7 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] Standalone executable build pipeline (PyInstaller + GitHub Actions)
 - [x] Employee search filter for input preview and processed output by ID or name
 - [x] Manual IN/OUT status editing with `MANUAL_EDIT` flag for corrections
-- [x] Calendar date picker for date range filter (using `tkcalendar` DateEntry)
+- [x] Calendar date picker for date range filter (using PySide6 `QDateEdit`)
 - [x] Time selection in date range filter for precise datetime filtering (HH:MM:SS format)
 - [x] Color-coded status rows in output tree (IN=light blue, OUT=light yellow)
 - [x] Local SQLite persistence of imported attendance logs with multi-device/source support
@@ -52,10 +52,9 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] Month picker for DTR report generation in GUI
 - [x] Dynamic employee/department selection dialog for PDF reports
 - [x] ReportLab integration for PDF generation
-- [x] Modular UI component architecture (`src/lgus_dat/ui/components/`)
-- [x] Separated UI views for data display (`src/lgus_dat/ui/views/`)
-- [x] Isolated modal dialogs (`src/lgus_dat/ui/dialogs/`)
-- [x] Business logic controller (`src/lgus_dat/ui/controller.py`)
+- [x] Modular PySide6 UI pages and widgets (`src/lgus_dat/desktop/pages/`, `src/lgus_dat/desktop/widgets/`)
+- [x] Shared business logic controller (`src/lgus_dat/core/controller.py`)
+- [x] Reusable date and search filters (`src/lgus_dat/core/date_filter.py`, `src/lgus_dat/core/search_filter.py`)
 - [x] Reduced main app complexity from ~750 to ~465 lines
 - [x] Component-based UI for improved maintainability and testability
 - [x] PySide6 desktop application (`src/lgus_dat/desktop/app.py`) with sidebar navigation and stacked pages

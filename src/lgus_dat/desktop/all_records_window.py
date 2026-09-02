@@ -22,8 +22,8 @@ from PySide6.QtWidgets import (
 from lgus_dat.desktop.desktop_controller import DesktopController
 from lgus_dat.desktop.widgets.progress_dialog import ProgressDialog
 from lgus_dat.processing.sequence_processor import process_records
-from lgus_dat.ui.date_filter import filter_by_date
-from lgus_dat.ui.search_filter import filter_by_search
+from lgus_dat.core.date_filter import filter_by_date
+from lgus_dat.core.search_filter import filter_by_search
 
 
 class AllRecordsWindow(QWidget):

@@ -36,11 +36,21 @@ jobs:
           pip install -e .
           pip install pyinstaller
 
+      - name: Get version from pyproject.toml
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Build executable
-        run: pyinstaller --onefile ${{ matrix.windowed }} --name LGUS-DAT scripts/gui_entry.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          pyinstaller --onefile ${{ matrix.windowed }} --name "lgus-dat-desktop-V${{ steps.version.outputs.VERSION }}" --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LGUS-DAT-${{ matrix.name }}
-          path: dist/LGUS-DAT${{ matrix.ext }}
+          name: lgus-dat-desktop-${{ matrix.name }}
+          path: dist/desktop/lgus-dat-desktop-V${{ steps.version.outputs.VERSION }}${{ matrix.ext }}

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import queue
-import threading
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -18,8 +16,8 @@ from lgus_dat.output.pdf_writer import generate_dtr_pdf, group_records_by_employ
 from lgus_dat.parser.dat_parser import ParsedRecord, parse_dat_file
 from lgus_dat.persistence.registry import AttendanceRegistry
 from lgus_dat.processing.sequence_processor import process_records
-from lgus_dat.ui.date_filter import filter_by_date
-from lgus_dat.ui.search_filter import filter_by_search
+from lgus_dat.core.date_filter import filter_by_date
+from lgus_dat.core.search_filter import filter_by_search
 
 
 @dataclass
@@ -418,53 +416,3 @@ class UIController:
     def get_employee_name(self, employee_id: str) -> Optional[str]:
         """Get employee name by ID."""
         return self.registry.employee_name(employee_id)
-
-
-class ProgressRunner:
-    """Helper class for running operations with progress dialogs."""
-
-    def __init__(self, parent: tk.Tk) -> None:
-        self.parent = parent
-        self.dialog: Optional[Any] = None
-
-    def run_with_progress(
-        self,
-        title: str,
-        target: Callable[[], Any],
-        on_done: Callable[[Any], None],
-    ) -> None:
-        """Run target in background thread with progress dialog.
-        
-        Args:
-            title: Title for progress dialog
-            target: Function to run in background
-            on_done: Callback when target completes
-        """
-        from lgus_dat.ui.components.progress_dialog import ProgressDialog
-        
-        self.dialog = ProgressDialog(self.parent, title)
-        result_queue: queue.Queue[tuple[bool, Any]] = queue.Queue()
-
-        def worker() -> None:
-            try:
-                result = target()
-                result_queue.put((True, result))
-            except Exception as exc:
-                result_queue.put((False, exc))
-
-        def poll() -> None:
-            try:
-                success, result = result_queue.get_nowait()
-            except queue.Empty:
-                self.parent.after(100, poll)
-                return
-
-            self.dialog.close()
-            if success:
-                on_done(result)
-            else:
-                from tkinter import messagebox
-                messagebox.showerror("Error", str(result), parent=self.parent)
-
-        threading.Thread(target=worker, daemon=True).start()
-        self.parent.after(100, poll)

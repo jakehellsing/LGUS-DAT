@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from lgus_dat.ui.date_filter import filter_by_date, in_date_range
+from lgus_dat.core.date_filter import filter_by_date, in_date_range
 
 
 def _make_record(employee_id: str, record_date: date) -> dict:

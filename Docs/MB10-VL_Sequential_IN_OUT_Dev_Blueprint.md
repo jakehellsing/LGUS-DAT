@@ -396,12 +396,11 @@ src/
     pdf_writer
   cli/
     commands
-  ui/                  # Existing Tkinter UI (kept during migration)
-    app.py
-    components/
-    dialogs/
-    views/
-  desktop/             # New PySide6 UI
+  core/                # Shared application controller and filters
+    controller
+    date_filter
+    search_filter
+  desktop/             # PySide6 desktop UI
     app.py
     main_window.py
     pages/
@@ -412,9 +411,11 @@ src/
   tests/
 ```
 
-The `ui/` (Tkinter) package is kept in parallel until the PySide6
-`desktop/` package fully replaces it. The parser, domain, processing,
-and output layers should remain unchanged.
+The legacy Tkinter `ui/` package has been removed; the PySide6
+`desktop/` package is the only UI. Shared application logic
+(`controller`, `date_filter`, `search_filter`) lives in `core/` so it
+can be reused by future interfaces. The parser, domain, processing,
+and output layers remain unchanged.
 
 The exact programming language/framework is up to the developer unless
 the surrounding project already dictates one.
@@ -835,7 +836,7 @@ complete.
 | 4     | Port reports and exports | DTR PDF, CSV, attlog export working |
 | 5     | Port employee/department management | Management dialogs and pages |
 | 6     | Polish: KPI cards, charts, packaging | Final modern app |
-| 7     | Remove Tkinter UI and update docs | Clean repo, only PySide6 UI |
+| 7     | Remove Tkinter UI and update docs | Completed: `core/` for shared logic, only PySide6 UI |
 
 ------------------------------------------------------------------------
 

@@ -18,7 +18,6 @@ classifiers = [
 ]
 
 dependencies = [
-    "tkcalendar>=1.6",
     "reportlab>=4.0.0",
     "PySide6>=6.5.0",
 ]
@@ -33,7 +32,6 @@ build = [
 
 [project.scripts]
 lgus-dat = "lgus_dat.cli.commands:main"
-lgus-dat-gui = "lgus_dat.ui.app:main"
 lgus-dat-desktop = "lgus_dat.desktop.app:main"
 
 [tool.setuptools.packages.find]

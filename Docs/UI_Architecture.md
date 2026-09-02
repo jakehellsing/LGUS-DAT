@@ -4,31 +4,17 @@
 
 The LGUS-DAT desktop UI has been refactored from a monolithic structure to a modular component architecture. This separation of concerns improves maintainability, testability, and enables easier future UI framework migration.
 
-A new **PySide6** desktop UI was added in `src/lgus_dat/desktop/`. It provides a modern, themeable interface with sidebar navigation and is the primary interface moving forward. The legacy **Tkinter** UI remains in `src/lgus_dat/ui/`.
+The **PySide6** desktop UI lives in `src/lgus_dat/desktop/`. It provides a modern, themeable interface with sidebar navigation and is the only supported UI. The legacy Tkinter UI has been removed; shared application logic (controller, date filter, search filter) now lives in `src/lgus_dat/core/`.
 
 ## Architecture
 
 ### Directory Structure
 
 ```
-src/lgus_dat/ui/
-  components/          # Reusable UI building blocks
-    file_toolbar.py     # File operations (open, process, save, export)
-    registry_toolbar.py # Employee/department operations
-    date_filter_panel.py # Date/time range filtering
-    search_panel.py     # Employee search filtering
-    pdf_report_panel.py # PDF generation controls
-    progress_dialog.py  # Progress indicator dialog
-  views/               # Data display components
-    input_preview.py    # Raw input treeview
-    output_preview.py   # Processed output treeview
-    status_panel.py     # Status messages panel
-  dialogs/             # Modal dialogs
-    pdf_selection_dialog.py   # PDF report selection
-    management_dialog.py       # Employee/department management
-    status_edit_dialog.py      # Status editing dialog
+src/lgus_dat/core/     # Shared application logic
   controller.py         # Business logic coordination
-  app.py               # Main application orchestration
+  date_filter.py        # Date/time range filtering
+  search_filter.py      # Substring search filtering
 
 src/lgus_dat/desktop/  # PySide6 desktop interface
   app.py               # Entry point and QApplication setup
@@ -43,11 +29,13 @@ src/lgus_dat/desktop/  # PySide6 desktop interface
     reports_page.py    # DTR PDF, CSV, and attlog export
     employees_page.py  # Employee and department management, including department head name for DTR Verifying Officer
     settings_page.py   # Placeholder settings page
+    attendance_filing_page.py # Holidays, leave types, and employee status filings
   widgets/             # Reusable widgets
     kpi_card.py        # Dashboard KPI card
-    data_table.py      # Reusable data table (currently placeholder)
     progress_dialog.py # Modal progress dialog with worker thread
 ```
+
+> **Note:** The sections below describe the original Tkinter component layout for historical reference. The current PySide6 desktop uses `src/lgus_dat/desktop/pages/`, `src/lgus_dat/desktop/widgets/`, and `src/lgus_dat/core/` for shared logic.
 
 ## Component Responsibilities
 
@@ -179,6 +167,8 @@ src/lgus_dat/desktop/  # PySide6 desktop interface
 - Reduced merge conflicts
 
 ## Usage Examples
+
+> **Note:** These examples use the removed Tkinter `ui/` package and are shown for historical reference only. New PySide6 widgets live in `src/lgus_dat/desktop/widgets/` and `src/lgus_dat/desktop/pages/`.
 
 ### Creating a New Component
 
@@ -318,4 +308,4 @@ Potential improvements to the modular architecture:
 
 ## Conclusion
 
-The modular UI architecture provides a solid foundation for future development while maintaining all existing functionality. The PySide6 desktop UI is now the primary interface and shares the same business logic and registry as the legacy Tkinter UI through `UIController` and `DesktopController`. This dual-stack approach preserves existing work while enabling a modern, maintainable interface.
+The modular UI architecture provides a solid foundation for future development. The PySide6 desktop UI is the only supported interface and shares the same business logic and registry through `UIController` (now in `core/`) and `DesktopController`. The shared `core/` layer keeps business logic independent of any UI framework, making future migrations easier.

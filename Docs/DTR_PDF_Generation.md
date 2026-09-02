@@ -75,8 +75,8 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
 
 #### File Location
 - PDF writer module: `src/lgus_dat/output/pdf_writer.py`
-- Selection dialog: `src/lgus_dat/ui/pdf_selection_dialog.py`
-- GUI integration: `src/lgus_dat/ui/app.py`
+- Selection dialog: `src/lgus_dat/desktop/pages/reports_page.py`
+- GUI integration: `src/lgus_dat/desktop/app.py`
 
 #### Dependencies
 - ReportLab 4.0.0+ for PDF generation

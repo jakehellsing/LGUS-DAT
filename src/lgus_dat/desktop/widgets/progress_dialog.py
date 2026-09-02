@@ -8,10 +8,8 @@ from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
     QDialog,
     QProgressBar,
-    QPushButton,
     QVBoxLayout,
     QLabel,
-    QApplication,
 )
 
 

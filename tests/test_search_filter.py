@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from lgus_dat.ui.search_filter import filter_by_search, matches_search
+from lgus_dat.core.search_filter import filter_by_search, matches_search
 
 
 @dataclass

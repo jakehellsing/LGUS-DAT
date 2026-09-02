@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date
-from itertools import groupby
+
 from typing import Callable, Iterable, Optional
 
 from lgus_dat.domain.attendance_record import AttendanceRecord, PunchStatus

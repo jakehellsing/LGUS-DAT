@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from lgus_dat.persistence.registry import AttendanceRegistry
-from lgus_dat.ui.controller import UIController
+from lgus_dat.core.controller import UIController
 
 
 class DesktopController:

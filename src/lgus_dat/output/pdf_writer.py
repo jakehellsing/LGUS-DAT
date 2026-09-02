@@ -34,7 +34,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from lgus_dat.domain.attendance_record import AttendanceRecord, PunchStatus
+from lgus_dat.domain.attendance_record import AttendanceRecord
 
 
 @dataclass

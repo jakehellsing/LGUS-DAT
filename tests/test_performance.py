@@ -28,7 +28,7 @@ def _make_dat_file(path: Path, records: int) -> None:
             f.write(f"2 {ts:%Y-%m-%d %H:%M:%S} 1 0 15 0\n")
 
 
-def test_parse_performance() -> float:
+def test_parse_performance() -> None:
     _ensure_temp_dir()
     dat_file = TEMP_DIR / "perf_attendance.dat"
     _make_dat_file(dat_file, RECORD_COUNT)
@@ -38,10 +38,9 @@ def test_parse_performance() -> float:
     t1 = time.perf_counter()
     elapsed = t1 - t0
     print(f"parse_dat_file ({len(records)} records): {elapsed:.3f}s")
-    return elapsed
 
 
-def test_import_performance() -> float:
+def test_import_performance() -> None:
     _ensure_temp_dir()
     dat_file = TEMP_DIR / "perf_attendance.dat"
     db_file = TEMP_DIR / "perf_import.db"
@@ -56,10 +55,9 @@ def test_import_performance() -> float:
     t1 = time.perf_counter()
     elapsed = t1 - t0
     print(f"import_attendance_logs ({count} new records): {elapsed:.3f}s")
-    return elapsed
 
 
-def test_load_and_process_performance() -> float:
+def test_load_and_process_performance() -> None:
     _ensure_temp_dir()
     dat_file = TEMP_DIR / "perf_attendance.dat"
     db_file = TEMP_DIR / "perf_load.db"
@@ -77,10 +75,9 @@ def test_load_and_process_performance() -> float:
     t1 = time.perf_counter()
     elapsed = t1 - t0
     print(f"get_attendance_logs + process_records ({len(processed)} processed): {elapsed:.3f}s")
-    return elapsed
 
 
-def test_pdf_generation_performance() -> float:
+def test_pdf_generation_performance() -> None:
     _ensure_temp_dir()
     dat_file = TEMP_DIR / "perf_attendance.dat"
     db_file = TEMP_DIR / "perf_pdf.db"
@@ -108,7 +105,6 @@ def test_pdf_generation_performance() -> float:
     t1 = time.perf_counter()
     elapsed = t1 - t0
     print(f"generate_dtr_pdf ({len(grouped)} employees): {elapsed:.3f}s")
-    return elapsed
 
 
 def main() -> None:
