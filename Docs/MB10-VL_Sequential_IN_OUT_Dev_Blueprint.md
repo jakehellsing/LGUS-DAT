@@ -579,8 +579,6 @@ The first version should **not** automatically infer:
 -   duplicate suppression windows
 -   shift schedules
 -   holidays
--   lateness
--   early departure
 
 Those are separate business rules.
 
@@ -593,7 +591,35 @@ Keep this rule deterministic and auditable.
 
 ------------------------------------------------------------------------
 
-## 18. Future Considerations
+## 18. DTR Undertime Calculation
+
+When generating the DTR PDF, the application calculates daily undertime for
+weekday workdays against the official schedule of **8:00 AM - 5:00 PM**.
+
+### Rules
+
+-   Undertime is calculated only for **Monday-Friday**.
+-   The first AM arrival is compared to the expected start time of **8:00 AM**.
+    -   Arrival at or before 8:00 AM = 0 undertime.
+    -   Arrival after 8:00 AM = the number of whole minutes late (e.g.,
+        8:01 AM = 1 minute, 8:05 AM = 5 minutes).
+-   The last available departure (PM if present, otherwise AM) is compared to
+    the expected end time of **5:00 PM**.
+    -   Departure at or after 5:00 PM = 0 undertime.
+    -   Departure before 5:00 PM = the number of whole minutes early
+        (e.g., 4:55 PM = 5 minutes, 4:50 PM = 10 minutes).
+-   The total undertime for the day is displayed in the **Undertime Hr** and
+    **Undertime Min** columns of the DTR.
+
+### Notes
+
+-   This is a fixed, deterministic rule and does not include grace periods,
+    shift schedules, or holidays.
+-   Weekends (Saturdays and Sundays) show no undertime.
+
+------------------------------------------------------------------------
+
+## 19. Future Considerations
 
 The architecture should leave room for:
 

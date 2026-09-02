@@ -16,7 +16,7 @@ from __future__ import annotations
 import calendar
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -132,6 +132,56 @@ def _day_name(year: int, month: int, day: int) -> str:
     return date(year, month, day).strftime("%a").upper()
 
 
+_OFFICIAL_START = time(8, 0)
+_OFFICIAL_END = time(17, 0)
+
+
+def _parse_hhmmss(time_str: Optional[str]) -> Optional[time]:
+    """Parse a HH:MM:SS string into a time object."""
+    if not time_str:
+        return None
+    try:
+        return datetime.strptime(time_str, "%H:%M:%S").time()
+    except ValueError:
+        return None
+
+
+def _minutes_between(start: time, end: time) -> int:
+    """Return the whole minutes between two time objects."""
+    start_td = timedelta(hours=start.hour, minutes=start.minute, seconds=start.second)
+    end_td = timedelta(hours=end.hour, minutes=end.minute, seconds=end.second)
+    return int((end_td - start_td).total_seconds() // 60)
+
+
+def _calculate_undertime(
+    year: int,
+    month: int,
+    day: int,
+    punches: DailyPunches,
+) -> tuple[int, int]:
+    """Calculate late-arrival and early-departure undertime in minutes.
+
+    Official work schedule is Monday-Friday, 8:00 AM - 5:00 PM.
+    Undertime is counted only on weekdays. Saturdays and Sundays are ignored.
+    """
+    if date(year, month, day).weekday() >= 5:
+        return 0, 0
+
+    total_minutes = 0
+
+    arrival = _parse_hhmmss(punches.in_am)
+    if arrival and arrival > _OFFICIAL_START:
+        total_minutes += _minutes_between(_OFFICIAL_START, arrival)
+
+    # Use the last available departure (PM first, then AM fallback for 2-punch days).
+    departure_str = punches.out_pm or punches.out_am
+    departure = _parse_hhmmss(departure_str)
+    if departure and departure < _OFFICIAL_END:
+        total_minutes += _minutes_between(departure, _OFFICIAL_END)
+
+    return total_minutes // 60, total_minutes % 60
+
+
 def _create_employee_page(
     employee_id: str,
     employee_name: Optional[str],
@@ -227,14 +277,17 @@ def _create_employee_page(
 
     for day in range(1, num_days + 1):
         punches = daily_punches.get(day, DailyPunches(day=day))
+        undertime_hr, undertime_min = _calculate_undertime(
+            month.year, month.month, day, punches
+        )
         row = [
             str(day),
             _format_time(punches.in_am),
             _format_time(punches.out_am),
             _format_time(punches.in_pm),
             _format_time(punches.out_pm),
-            "",
-            "",
+            str(undertime_hr) if undertime_hr or undertime_min else "",
+            str(undertime_min) if undertime_hr or undertime_min else "",
             _day_name(month.year, month.month, day),
         ]
         table_data.append(row)
