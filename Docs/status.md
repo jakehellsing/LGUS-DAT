@@ -4,9 +4,11 @@
 
 ### Current Version
 
-`v0.27.0`
+`v0.28.0`
 
 ### Status
+
+Added `head_position` to the `Department` model. The DTR PDF signature line now prints the department head name and position, replacing the generic `Verifying Officer` label. Both the PySide6 and Tkinter department management UIs include a `Head Position` field. The head name and position are stored in the local SQLite registry and do not affect the binary `department.dat` import/export.
 
 The DTR PDF now calculates daily undertime for Monday-Friday workdays against the official 8:00 AM - 5:00 PM schedule. Late arrivals after 8:00 AM and early departures before 5:00 PM are counted in whole minutes and shown in the Undertime Hr/Min columns. Weekends are excluded and two-punch days use the final departure as the end time.
 
@@ -131,6 +133,8 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 || v0.26.0 | 2026-09-02 | Added department `head_name` field, used it as the DTR PDF Verifying Officer, and exposed head-name editing in the PySide6 and Tkinter department management UIs. |
 
 || v0.27.0 | 2026-09-02 | Added DTR PDF undertime calculation for Mon-Fri 8:00 AM - 5:00 PM, counting late arrivals and early departures in Hr/Min columns. |
+
+|| v0.28.0 | 2026-09-02 | Added department `head_position` field; DTR signature line now prints head name and position, replacing the generic `Verifying Officer` label. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 
