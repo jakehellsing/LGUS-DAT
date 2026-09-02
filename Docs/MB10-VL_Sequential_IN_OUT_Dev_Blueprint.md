@@ -619,6 +619,8 @@ weekday workdays against the government DTR schedule.
     two-punch days the AM departure is used as the final departure.
 -   The total undertime for the day is displayed in the **Undertime Hr** and
     **Undertime Min** columns of the DTR.
+-   At the bottom of the DTR, a **TOTAL =** row sums the **Hr** and **Min**
+    columns separately and displays the monthly totals.
 
 ### Notes
 

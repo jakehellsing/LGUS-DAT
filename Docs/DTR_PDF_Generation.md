@@ -18,7 +18,7 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
     - **PM** (Arrival, Departure)
     - **Undertime** (Hr, Min)
     - **Remarks** (weekday abbreviation)
-  - `TOTAL =` line below the table
+  - `TOTAL =` line below the table showing the monthly totals in the **Undertime Hr** and **Undertime Min** columns
   - Certification text: *"I CERTIFY on my honor..."*
   - Signature line for the employee
   - Signature line for the **Verifying Officer**, populated from the department's `head_name` field when available

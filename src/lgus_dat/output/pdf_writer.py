@@ -260,14 +260,6 @@ def _create_employee_page(
         leading=9,
         alignment=TA_CENTER,
     )
-    total_line_style = ParagraphStyle(
-        "TotalLine",
-        parent=styles["Normal"],
-        fontName="Helvetica-Bold",
-        fontSize=8,
-        leading=10,
-        alignment=TA_LEFT,
-    )
     cert_text = (
         "I CERTIFY on my honor that the above is a true and correct report of the hours of work performed, "
         "record of which was made DAILY at the time of arrival and at the time of departure from office."
@@ -307,11 +299,15 @@ def _create_employee_page(
         ["", "Arrival", "Departure", "Arrival", "Departure", "Hr", "Min", ""],
     ]
 
+    total_undertime_hr = 0
+    total_undertime_min = 0
     for day in range(1, num_days + 1):
         punches = daily_punches.get(day, DailyPunches(day=day))
         undertime_hr, undertime_min = _calculate_undertime(
             month.year, month.month, day, punches
         )
+        total_undertime_hr += undertime_hr
+        total_undertime_min += undertime_min
         row = [
             str(day),
             _format_time(punches.in_am),
@@ -324,7 +320,9 @@ def _create_employee_page(
         ]
         table_data.append(row)
 
-    total_para = Paragraph("TOTAL =", total_line_style)
+    table_data.append(
+        ["TOTAL =", "", "", "", "", str(total_undertime_hr), str(total_undertime_min), ""]
+    )
 
     base_dtr_width = 3.7 * inch
     base_col_widths = [
@@ -366,10 +364,12 @@ def _create_employee_page(
                 ("TOPPADDING", (0, 2), (-1, -2), 1),
                 ("BOTTOMPADDING", (0, 2), (-1, -2), 1),
                 # Total row
+                ("SPAN", (0, -1), (4, -1)),
                 ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
                 ("FONTSIZE", (0, -1), (-1, -1), 8),
                 ("ALIGN", (0, -1), (-1, -1), "CENTER"),
                 ("VALIGN", (0, -1), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, -1), (4, -1), "LEFT"),
                 # Grid and striping
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
                 ("LINEBELOW", (0, 1), (-1, 1), 1, colors.black),
@@ -408,7 +408,6 @@ def _create_employee_page(
         [title_para],
         [info_table],
         [dtr_table],
-        [total_para],
         [Paragraph(cert_text, cert_style)],
         [sig_table],
     ]
