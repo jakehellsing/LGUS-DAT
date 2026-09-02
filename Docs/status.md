@@ -4,7 +4,7 @@
 
 ### Current Version
 
-`v0.31.0`
+`v0.31.1`
 
 ### Status
 
@@ -16,7 +16,7 @@ Added an **Attendance Filing** page to the PySide6 desktop UI with three tabs: *
 
 Added `head_position` to the `Department` model. The DTR PDF signature line now prints the department head name and position, replacing the generic `Verifying Officer` label. The PySide6 Employees page includes a `Head Position` field. The head name and position are stored in the local SQLite registry and do not affect the binary `department.dat` import/export.
 
-The DTR PDF now calculates daily undertime for Monday-Friday workdays against the official 8:00 AM - 5:00 PM schedule. Late arrivals after 8:00 AM and early departures before 5:00 PM are counted in whole minutes and shown in the Undertime Hr/Min columns. Weekends are excluded and two-punch days use the final departure as the end time.
+The DTR PDF now calculates daily undertime for Monday-Friday workdays against the official 8:00 AM - 5:00 PM schedule. Late arrivals after 8:00 AM and early departures before 5:00 PM are counted in whole minutes and shown in the Undertime Hr/Min columns. Weekends are excluded, two-punch days use the final departure as the end time, and any day with a filed leave/status has zero undertime.
 
 Added a `head_name` field to the `Department` model and registry. The DTR PDF "Verifying Officer" signature line is now derived from the employee's department head name. The PySide6 Employees page allows viewing and editing the department head name. The binary `department.dat` importer/exporter is unchanged because the device format does not carry head metadata; the value is stored in the local SQLite registry only.
 
@@ -152,6 +152,8 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 || v0.30.0 | 2026-09-02 | Completed Tkinter-to-PySide6 migration: removed legacy `ui/`, moved shared controller/filters to `core/`, cleaned dead code and build artifacts, aligned CI build with `lgus-dat-desktop-V{VERSION}`, and updated project docs. |
 
 || v0.31.0 | 2026-09-02 | Pre-populated 19 municipal departments and 14 standard leave/status types using versioned seeds; fixed DTR PDF `Remarks` cell overflow for long leave labels by widening the column, reducing font size, and enabling word-wrap. |
+
+|| v0.31.1 | 2026-09-02 | Updated DTR undertime relation to leave type logic so any filed leave/status type (not only `Fieldwork`) produces zero undertime; updated blueprint and DTR PDF docs accordingly. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 

@@ -212,9 +212,9 @@ def _calculate_undertime(
     - Early lunch out before 12:00 PM counts.
     - Late lunch in after 1:00 PM counts.
     - Early end before 5:00 PM counts.
-    - A day filed as `Fieldwork` has no undertime.
+    - A day filed with any leave/status type has no undertime.
     """
-    if status_labels and "Fieldwork" in status_labels:
+    if status_labels:
         return 0, 0
 
     if date(year, month, day).weekday() >= 5:
