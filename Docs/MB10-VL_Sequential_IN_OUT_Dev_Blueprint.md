@@ -594,20 +594,29 @@ Keep this rule deterministic and auditable.
 ## 18. DTR Undertime Calculation
 
 When generating the DTR PDF, the application calculates daily undertime for
-weekday workdays against the official schedule of **8:00 AM - 5:00 PM**.
+weekday workdays against the government DTR schedule.
+
+### Official Weekday Schedule
+
+-   **8:00 AM** — morning arrival
+-   **12:00 PM** — lunch out
+-   **1:00 PM** — lunch in
+-   **5:00 PM** — afternoon departure
 
 ### Rules
 
 -   Undertime is calculated only for **Monday-Friday**.
--   The first AM arrival is compared to the expected start time of **8:00 AM**.
-    -   Arrival at or before 8:00 AM = 0 undertime.
-    -   Arrival after 8:00 AM = the number of whole minutes late (e.g.,
-        8:01 AM = 1 minute, 8:05 AM = 5 minutes).
--   The last available departure (PM if present, otherwise AM) is compared to
-    the expected end time of **5:00 PM**.
-    -   Departure at or after 5:00 PM = 0 undertime.
-    -   Departure before 5:00 PM = the number of whole minutes early
-        (e.g., 4:55 PM = 5 minutes, 4:50 PM = 10 minutes).
+-   A weekday with **no punches at all** = **8 hours** undertime.
+-   **Late arrival**: arrival after 8:00 AM = whole minutes late
+    (e.g., 8:01 AM = 1 minute, 8:05 AM = 5 minutes).
+-   **Early lunch out**: lunch out before 12:00 PM = whole minutes early
+    (e.g., 11:35 AM = 25 minutes).
+-   **Late lunch in**: lunch in after 1:00 PM = whole minutes late
+    (e.g., 2:02 PM = 62 minutes).
+-   **Early end**: departure before 5:00 PM = whole minutes early
+    (e.g., 4:55 PM = 5 minutes, 4:50 PM = 10 minutes).
+-   The last available PM departure is used for early end calculation; for
+    two-punch days the AM departure is used as the final departure.
 -   The total undertime for the day is displayed in the **Undertime Hr** and
     **Undertime Min** columns of the DTR.
 

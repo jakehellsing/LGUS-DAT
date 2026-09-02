@@ -133,7 +133,10 @@ def _day_name(year: int, month: int, day: int) -> str:
 
 
 _OFFICIAL_START = time(8, 0)
+_OFFICIAL_LUNCH_OUT = time(12, 0)
+_OFFICIAL_LUNCH_IN = time(13, 0)
 _OFFICIAL_END = time(17, 0)
+_OFFICIAL_WORKDAY_MINUTES = 8 * 60  # 480
 
 
 def _parse_hhmmss(time_str: Optional[str]) -> Optional[time]:
@@ -153,25 +156,54 @@ def _minutes_between(start: time, end: time) -> int:
     return int((end_td - start_td).total_seconds() // 60)
 
 
+def _has_any_punches(punches: DailyPunches) -> bool:
+    """Return True if any time slot has a punch."""
+    return any(
+        (punches.in_am, punches.out_am, punches.in_pm, punches.out_pm)
+    )
+
+
 def _calculate_undertime(
     year: int,
     month: int,
     day: int,
     punches: DailyPunches,
 ) -> tuple[int, int]:
-    """Calculate late-arrival and early-departure undertime in minutes.
+    """Calculate daily undertime in minutes against the government DTR schedule.
 
-    Official work schedule is Monday-Friday, 8:00 AM - 5:00 PM.
-    Undertime is counted only on weekdays. Saturdays and Sundays are ignored.
+    Official weekday schedule:
+    - 8:00 AM arrival
+    - 12:00 PM lunch out
+    - 1:00 PM lunch in
+    - 5:00 PM departure
+
+    Rules:
+    - Undertime is counted only on Monday-Friday.
+    - A weekday with no punches at all = 8 hours undertime.
+    - Late arrival after 8:00 AM counts.
+    - Early lunch out before 12:00 PM counts.
+    - Late lunch in after 1:00 PM counts.
+    - Early end before 5:00 PM counts.
     """
     if date(year, month, day).weekday() >= 5:
         return 0, 0
+
+    if not _has_any_punches(punches):
+        return _OFFICIAL_WORKDAY_MINUTES // 60, _OFFICIAL_WORKDAY_MINUTES % 60
 
     total_minutes = 0
 
     arrival = _parse_hhmmss(punches.in_am)
     if arrival and arrival > _OFFICIAL_START:
         total_minutes += _minutes_between(_OFFICIAL_START, arrival)
+
+    lunch_out = _parse_hhmmss(punches.out_am)
+    if lunch_out and lunch_out < _OFFICIAL_LUNCH_OUT:
+        total_minutes += _minutes_between(lunch_out, _OFFICIAL_LUNCH_OUT)
+
+    lunch_in = _parse_hhmmss(punches.in_pm)
+    if lunch_in and lunch_in > _OFFICIAL_LUNCH_IN:
+        total_minutes += _minutes_between(_OFFICIAL_LUNCH_IN, lunch_in)
 
     # Use the last available departure (PM first, then AM fallback for 2-punch days).
     departure_str = punches.out_pm or punches.out_am

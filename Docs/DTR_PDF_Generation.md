@@ -30,10 +30,13 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
   - 2nd punch → AM Departure
   - 3rd punch → PM Arrival
   - 4th punch → PM Departure
-- **Undertime calculation**: For Monday-Friday workdays, undertime is calculated against the official 8:00 AM - 5:00 PM schedule:
-  - Arrival after 8:00 AM counts as late (e.g., 8:01 AM = 1 minute undertime)
-  - Departure before 5:00 PM counts as early-out (e.g., 4:55 PM = 5 minutes undertime)
-  - Undertime is shown in the **Hr** and **Min** columns
+- **Undertime calculation**: For Monday-Friday workdays, undertime is calculated against the government DTR schedule:
+  - 8:00 AM morning arrival
+  - 12:00 PM lunch out
+  - 1:00 PM lunch in
+  - 5:00 PM afternoon departure
+  - Late arrival, early lunch out, late lunch in, and early departure are all counted in whole minutes
+  - A weekday with no punches at all = 8 hours undertime
   - Saturdays and Sundays are excluded
 - **Incomplete records**: Days with fewer than 4 punches show blank cells for missing time slots (marked for investigation)
 - **Extra punches**: Only the first 4 punches are used; additional punches are ignored
