@@ -195,6 +195,7 @@ def _calculate_undertime(
     month: int,
     day: int,
     punches: DailyPunches,
+    status_labels: list[str] | None = None,
 ) -> tuple[int, int]:
     """Calculate daily undertime in minutes against the government DTR schedule.
 
@@ -211,7 +212,11 @@ def _calculate_undertime(
     - Early lunch out before 12:00 PM counts.
     - Late lunch in after 1:00 PM counts.
     - Early end before 5:00 PM counts.
+    - A day filed as `Fieldwork` has no undertime.
     """
+    if status_labels and "Fieldwork" in status_labels:
+        return 0, 0
+
     if date(year, month, day).weekday() >= 5:
         return 0, 0
 
@@ -343,8 +348,9 @@ def _create_employee_page(
     total_undertime_min = 0
     for day in range(1, num_days + 1):
         punches = daily_punches.get(day, DailyPunches(day=day))
+        day_statuses = employee_status_by_day.get(day, [])
         undertime_hr, undertime_min = _calculate_undertime(
-            month.year, month.month, day, punches
+            month.year, month.month, day, punches, day_statuses
         )
         total_undertime_hr += undertime_hr
         total_undertime_min += undertime_min

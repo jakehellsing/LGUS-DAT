@@ -888,3 +888,5 @@ configure attendance statuses that modify the DTR `Remarks` column.
 -   If both apply to the same day, they are combined with ` / `.
 -   Any biometric punches for that day are still printed in the AM/PM time
     slots.
+-   A day filed as `Fieldwork` has no undertime calculated, regardless of
+    the biometric punches recorded.

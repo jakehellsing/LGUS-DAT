@@ -25,6 +25,7 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
 
 ### Data Processing
 - **Holiday and leave status remarks**: System-wide holidays and per-employee filed status ranges are looked up for the report month. When present, the DTR `Remarks` cell prints the holiday name and/or status label instead of the weekday; both may be combined with ` / `.
+- **Fieldwork undertime**: A day filed as `Fieldwork` has zero undertime, regardless of the recorded punches.
 - **Duplicate handling**: When duplicate punches with the same employee_id, date, and timestamp are found, only the first occurrence is used
 - **4-punch mapping**: The first 4 punches per day are mapped to the 4 time slots:
   - 1st punch → AM Arrival
