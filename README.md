@@ -113,7 +113,7 @@ You can also import the device's `user.dat` to resolve employee names from numer
 
 **Department Management Features:**
 - Dropdown department selection for employee assignment (shows department names instead of IDs)
-- Department `head_name` field used as the DTR PDF Verifying Officer signature
+- Department `head_name` and `head_position` fields used on the DTR PDF signature line; `head_position` replaces the generic `Verifying Officer` label
 - Department details view with employee count and member management
 - Add/remove employees from departments with visual interface
 - Safety checks to prevent deletion of departments with assigned employees

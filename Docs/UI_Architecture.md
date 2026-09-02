@@ -110,7 +110,7 @@ src/lgus_dat/desktop/  # PySide6 desktop interface
 **ManagementDialog**
 - Employee and department management
 - CRUD operations for employees and departments
-- Department `head_name` field for DTR Verifying Officer
+- Department `head_name` and `head_position` fields for the DTR signature line
 - Device backup import/export
 - Department dropdown selection for employee assignment
 - Department details view with employee management
@@ -122,7 +122,7 @@ src/lgus_dat/desktop/  # PySide6 desktop interface
 
 **Internal Dialog Classes**
 - `_EmployeeDialog`: Employee add/edit with department dropdown
-- `_DepartmentDialog`: Department add/edit with validation and `head_name` field for the DTR Verifying Officer
+- `_DepartmentDialog`: Department add/edit with validation and `head_name` and `head_position` fields for the DTR signature line
 - `_DepartmentDetailsDialog`: Department details and employee management
 
 ### Controller (`ui/controller.py`)

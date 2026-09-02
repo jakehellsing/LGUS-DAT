@@ -21,7 +21,7 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
   - `TOTAL =` line below the table showing the monthly totals in the **Undertime Hr** and **Undertime Min** columns
   - Certification text: *"I CERTIFY on my honor..."*
   - Signature line for the employee
-  - Signature line for the **Verifying Officer**, populated from the department's `head_name` field when available
+  - Signature line for the department's `head_name` and `head_position`; `head_position` replaces the generic `Verifying Officer` label when set
 
 ### Data Processing
 - **Duplicate handling**: When duplicate punches with the same employee_id, date, and timestamp are found, only the first occurrence is used
@@ -87,7 +87,7 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
 4. Records are grouped by day and sorted by timestamp
 5. First 4 punches per day are mapped to time slots
 6. Undertime is calculated for weekday arrivals after 8:00 AM and departures before 5:00 PM
-7. The department head name is resolved from the employee's department and printed on the `Verifying Officer` signature line
+7. The department head name and position are resolved from the employee's department and printed on the signature line; the position replaces `Verifying Officer` when set
 8. PDF is generated with the government DTR form layout (two copies per page)
 
 ## Example Scenarios

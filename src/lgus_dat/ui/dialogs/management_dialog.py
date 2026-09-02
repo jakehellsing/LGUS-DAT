@@ -142,8 +142,12 @@ class _DepartmentDialog:
         self.head_var = tk.StringVar(value=department.head_name if department else "")
         ttk.Entry(frame, textvariable=self.head_var).grid(row=2, column=1, sticky=tk.EW, pady=4)
 
+        ttk.Label(frame, text="Head Position:").grid(row=3, column=0, sticky=tk.W, pady=4)
+        self.head_position_var = tk.StringVar(value=department.head_position if department else "")
+        ttk.Entry(frame, textvariable=self.head_position_var).grid(row=3, column=1, sticky=tk.EW, pady=4)
+
         btn_frame = ttk.Frame(frame)
-        btn_frame.grid(row=3, column=0, columnspan=2, pady=12)
+        btn_frame.grid(row=4, column=0, columnspan=2, pady=12)
         ttk.Button(btn_frame, text="Save", command=self._save).pack(side=tk.LEFT, padx=4)
         ttk.Button(btn_frame, text="Cancel", command=self.window.destroy).pack(side=tk.LEFT, padx=4)
 
@@ -169,8 +173,9 @@ class _DepartmentDialog:
             return
 
         head_name = self.head_var.get().strip() or None
+        head_position = self.head_position_var.get().strip() or None
         raw_record = self.department.raw_record if self.department else None
-        self.result = Department(department_id=department_id, name=name, raw_record=raw_record, head_name=head_name)
+        self.result = Department(department_id=department_id, name=name, raw_record=raw_record, head_name=head_name, head_position=head_position)
         self.window.destroy()
 
 
@@ -209,10 +214,13 @@ class _DepartmentDetailsDialog:
         ttk.Label(info_frame, text="Head Name:").grid(row=2, column=0, sticky=tk.W, pady=4)
         ttk.Label(info_frame, text=self.department.head_name or "").grid(row=2, column=1, sticky=tk.W, pady=4)
 
+        ttk.Label(info_frame, text="Head Position:").grid(row=3, column=0, sticky=tk.W, pady=4)
+        ttk.Label(info_frame, text=self.department.head_position or "").grid(row=3, column=1, sticky=tk.W, pady=4)
+
         # Employee count
         employee_count = len(self._get_department_employees())
-        ttk.Label(info_frame, text="Employees:").grid(row=3, column=0, sticky=tk.W, pady=4)
-        ttk.Label(info_frame, text=str(employee_count)).grid(row=3, column=1, sticky=tk.W, pady=4)
+        ttk.Label(info_frame, text="Employees:").grid(row=4, column=0, sticky=tk.W, pady=4)
+        ttk.Label(info_frame, text=str(employee_count)).grid(row=4, column=1, sticky=tk.W, pady=4)
         
         # Employees frame
         emp_frame = ttk.LabelFrame(self.window, text="Employees in Department", padding=8)
@@ -391,7 +399,7 @@ class ManagementDialog:
         dept_frame = ttk.Frame(notebook)
         notebook.add(dept_frame, text="Departments")
 
-        dept_cols = ("Department ID", "Name", "Head Name", "Employee Count")
+        dept_cols = ("Department ID", "Name", "Head Name", "Head Position", "Employee Count")
         self.dept_tree = ttk.Treeview(dept_frame, columns=dept_cols, show="headings")
         for col in dept_cols:
             self.dept_tree.heading(col, text=col, command=lambda _col=col: self._sort_tree(self.dept_tree, _col))
@@ -487,7 +495,7 @@ class ManagementDialog:
             self.dept_tree.insert(
                 "",
                 tk.END,
-                values=(dept.department_id, dept.name, dept.head_name or "", emp_count),
+                values=(dept.department_id, dept.name, dept.head_name or "", dept.head_position or "", emp_count),
             )
 
     def _refresh(self) -> None:

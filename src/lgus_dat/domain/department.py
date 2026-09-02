@@ -14,3 +14,4 @@ class Department:
     name: str
     raw_record: Optional[bytes] = None
     head_name: Optional[str] = None
+    head_position: Optional[str] = None

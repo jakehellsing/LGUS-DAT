@@ -769,7 +769,7 @@ Main Window
 |   |-- Import page: file import and raw input preview
 |   |-- Processed Records page: IN/OUT output, filters, search
 |   |-- Reports page: DTR PDF, CSV, attlog export
-|   |-- Employees page: employee and department management, including department head name used as the DTR Verifying Officer
+|   |-- Employees page: employee and department management, including department head name and position on the DTR signature line
 |
 |-- Status bar
 ```

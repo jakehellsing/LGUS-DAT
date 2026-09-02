@@ -304,6 +304,11 @@ class UIController:
             for dept in self.registry.all_departments()
             if dept.head_name is not None
         }
+        department_head_positions = {
+            dept.department_id: dept.head_position
+            for dept in self.registry.all_departments()
+            if dept.head_position is not None
+        }
         employee_departments = {
             emp.device_user_id: emp.department_id
             for emp in self.registry.all_employees()
@@ -327,6 +332,7 @@ class UIController:
             employee_departments=employee_departments,
             employee_positions=employee_positions,
             department_heads=department_heads,
+            department_head_positions=department_head_positions,
         )
         
         return str(path), len(filtered_records)

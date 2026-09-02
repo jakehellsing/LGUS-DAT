@@ -152,6 +152,9 @@ class DepartmentEditDialog(QDialog):
         self.head_edit = QLineEdit(self.department.head_name or "")
         layout.addRow("Head Name (DTR only):", self.head_edit)
 
+        self.head_position_edit = QLineEdit(self.department.head_position or "")
+        layout.addRow("Head Position (DTR only):", self.head_position_edit)
+
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self._save)
         buttons.rejected.connect(self.reject)
@@ -164,7 +167,8 @@ class DepartmentEditDialog(QDialog):
             return
 
         head_name = self.head_edit.text().strip() or None
-        updated = replace(self.department, name=name, head_name=head_name)
+        head_position = self.head_position_edit.text().strip() or None
+        updated = replace(self.department, name=name, head_name=head_name, head_position=head_position)
         self.controller.registry.upsert_department(updated)
         self.accept()
 
@@ -358,6 +362,10 @@ class EmployeesPage(QWidget):
         self.dept_head_input.setPlaceholderText("Department Head Name")
         dept_controls.addWidget(self.dept_head_input)
 
+        self.dept_head_position_input = QLineEdit()
+        self.dept_head_position_input.setPlaceholderText("Department Head Position")
+        dept_controls.addWidget(self.dept_head_position_input)
+
         add_dept_btn = QPushButton("Add Department")
         add_dept_btn.clicked.connect(self._add_department)
         dept_controls.addWidget(add_dept_btn)
@@ -383,8 +391,8 @@ class EmployeesPage(QWidget):
         dept_layout.addLayout(dept_sort_layout)
 
         self.dept_table = QTableWidget()
-        self.dept_table.setColumnCount(3)
-        self.dept_table.setHorizontalHeaderLabels(["Department ID", "Name", "Head Name"])
+        self.dept_table.setColumnCount(4)
+        self.dept_table.setHorizontalHeaderLabels(["Department ID", "Name", "Head Name", "Head Position"])
         self.dept_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.dept_table.horizontalHeader().setStretchLastSection(True)
         self.dept_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -594,6 +602,7 @@ class EmployeesPage(QWidget):
             self.dept_table.setItem(row, 0, NumericTableItem(str(dept.department_id)))
             self.dept_table.setItem(row, 1, QTableWidgetItem(dept.name))
             self.dept_table.setItem(row, 2, QTableWidgetItem(dept.head_name or ""))
+            self.dept_table.setItem(row, 3, QTableWidgetItem(dept.head_position or ""))
 
     def _open_add_employee_dialog(self) -> None:
         dialog = EmployeeAddDialog(self.controller, self)
@@ -645,10 +654,12 @@ class EmployeesPage(QWidget):
             return
 
         head_name = self.dept_head_input.text().strip() or None
-        department = Department(department_id=dept_id, name=name, head_name=head_name)
+        head_position = self.dept_head_position_input.text().strip() or None
+        department = Department(department_id=dept_id, name=name, head_name=head_name, head_position=head_position)
         self.controller.registry.upsert_department(department)
         self.dept_name_input.clear()
         self.dept_head_input.clear()
+        self.dept_head_position_input.clear()
         self._refresh_departments()
 
     def _edit_department(self) -> None:
