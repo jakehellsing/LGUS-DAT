@@ -4,7 +4,7 @@
 
 ### Current Version
 
-`v0.28.0`
+`v0.29.0`
 
 ### Status
 
@@ -139,6 +139,8 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 || v0.27.0 | 2026-09-02 | Added DTR PDF undertime calculation for Mon-Fri 8:00 AM - 5:00 PM, counting late arrivals and early departures in Hr/Min columns. |
 
 || v0.28.0 | 2026-09-02 | Added department `head_position` field; DTR signature line now prints head name and position, replacing the generic `Verifying Officer` label. |
+|
+||| v0.29.0 | 2026-09-02 | Added Attendance Filing page with holidays, leave/status types, and per-employee date-range filings; DTR Remarks now prints status labels and `Fieldwork` days have zero undertime. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 
