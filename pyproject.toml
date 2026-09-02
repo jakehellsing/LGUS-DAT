@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lgus-dat"
-version = "0.26.0"
+version = "0.27.0"
 description = "MB10-VL Sequential IN/OUT .DAT Processor"
 readme = "README.md"
 requires-python = ">=3.10"

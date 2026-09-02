@@ -91,6 +91,7 @@ The PySide6 desktop UI lets you import `.dat` files, process them into IN/OUT ro
 - Date and time range filtering for precise datetime selection
 - Employee search filter by ID or name
 - **DTR PDF generation** with excel-like monthly attendance reports
+- DTR undertime calculation for Mon-Fri 8:00 AM - 5:00 PM (late arrivals and early departures)
 - DTR report scope selection (all, by department, by specific employees)
 - CSV and NGTeco-compatible `attlog.dat` export with workcode '1'
 - Employee and department management with CRUD operations
@@ -126,9 +127,9 @@ To build the PySide6 desktop app locally with PyInstaller:
 
 ```bash
 pip install -e ".[build]"
-pyinstaller --onefile --windowed --name lgus-dat-desktop-V0.26.0 --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
+pyinstaller --onefile --windowed --name lgus-dat-desktop-V0.27.0 --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
 ```
 
-Replace `V0.26.0` with the current version from `pyproject.toml`.
+Replace `V0.27.0` with the current version from `pyproject.toml`.
 
-The output will be in `dist/desktop/lgus-dat-desktop-V0.26.0.exe` (Windows) or `dist/desktop/lgus-dat-desktop-V0.26.0` (Linux).
+The output will be in `dist/desktop/lgus-dat-desktop-V0.27.0.exe` (Windows) or `dist/desktop/lgus-dat-desktop-V0.27.0` (Linux).

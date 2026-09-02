@@ -4,9 +4,11 @@
 
 ### Current Version
 
-`v0.26.0`
+`v0.27.0`
 
 ### Status
+
+The DTR PDF now calculates daily undertime for Monday-Friday workdays against the official 8:00 AM - 5:00 PM schedule. Late arrivals after 8:00 AM and early departures before 5:00 PM are counted in whole minutes and shown in the Undertime Hr/Min columns. Weekends are excluded and two-punch days use the final departure as the end time.
 
 Added a `head_name` field to the `Department` model and registry. The DTR PDF "Verifying Officer" signature line is now derived from the employee's department head name. Both the PySide6 Employees page and the legacy Tkinter Management dialog allow viewing and editing the department head name. The binary `department.dat` importer/exporter is unchanged because the device format does not carry head metadata; the value is stored in the local SQLite registry only.
 
@@ -127,6 +129,8 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 
 | v0.25.2 | 2026-09-02 | Fixed stale row mixing after filtering, numeric sorting for ID columns, and added a Refresh button to the Employees tab. |
 || v0.26.0 | 2026-09-02 | Added department `head_name` field, used it as the DTR PDF Verifying Officer, and exposed head-name editing in the PySide6 and Tkinter department management UIs. |
+
+|| v0.27.0 | 2026-09-02 | Added DTR PDF undertime calculation for Mon-Fri 8:00 AM - 5:00 PM, counting late arrivals and early departures in Hr/Min columns. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 
