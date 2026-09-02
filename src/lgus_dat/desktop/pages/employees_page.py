@@ -44,6 +44,16 @@ def _department_id_key(dept: Department):
     return dept.department_id
 
 
+class NumericTableItem(QTableWidgetItem):
+    """QTableWidgetItem that sorts numbers numerically and falls back to string sort."""
+
+    def __lt__(self, other: QTableWidgetItem) -> bool:
+        try:
+            return int(self.text()) < int(other.text())
+        except ValueError:
+            return super().__lt__(other)
+
+
 class EmployeeEditDialog(QDialog):
     """Modal dialog for editing an employee."""
 
@@ -259,6 +269,10 @@ class EmployeesPage(QWidget):
         del_emp_btn.clicked.connect(self._delete_employee)
         emp_action_controls.addWidget(del_emp_btn)
 
+        refresh_emp_btn = QPushButton("Refresh")
+        refresh_emp_btn.clicked.connect(self._refresh)
+        emp_action_controls.addWidget(refresh_emp_btn)
+
         emp_action_controls.addStretch()
 
         emp_action_controls.addWidget(QLabel("Sort by:"))
@@ -406,10 +420,12 @@ class EmployeesPage(QWidget):
         employees = self.controller.registry.all_employees()
         counts = Counter(emp.position for emp in employees if emp.position)
 
+        self.positions_table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+        self.positions_table.setRowCount(0)
         self.positions_table.setRowCount(len(positions))
         for row, position in enumerate(positions):
             self.positions_table.setItem(row, 0, QTableWidgetItem(position))
-            self.positions_table.setItem(row, 1, QTableWidgetItem(str(counts.get(position, 0))))
+            self.positions_table.setItem(row, 1, NumericTableItem(str(counts.get(position, 0))))
 
     def _add_position(self) -> None:
         """Add a new position to the master list."""
@@ -499,14 +515,16 @@ class EmployeesPage(QWidget):
         elif sort_by == "Name":
             employees = sorted(employees, key=lambda e: e.name)
 
+        self.emp_table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+        self.emp_table.setRowCount(0)
         self.emp_table.setRowCount(len(employees))
         for row, emp in enumerate(employees):
-            self.emp_table.setItem(row, 0, QTableWidgetItem(emp.device_user_id))
+            self.emp_table.setItem(row, 0, NumericTableItem(emp.device_user_id))
             self.emp_table.setItem(row, 1, QTableWidgetItem(emp.name))
             self.emp_table.setItem(row, 2, QTableWidgetItem(emp.full_name or ""))
             self.emp_table.setItem(row, 3, QTableWidgetItem(emp.position or ""))
             dept = str(emp.department_id) if emp.department_id is not None else ""
-            self.emp_table.setItem(row, 4, QTableWidgetItem(dept))
+            self.emp_table.setItem(row, 4, NumericTableItem(dept))
 
     def _refresh_departments(self) -> None:
         """Refresh the department table, sorted by the current selection."""
@@ -518,9 +536,11 @@ class EmployeesPage(QWidget):
         elif sort_by == "Name":
             departments = sorted(departments, key=lambda d: d.name)
 
+        self.dept_table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+        self.dept_table.setRowCount(0)
         self.dept_table.setRowCount(len(departments))
         for row, dept in enumerate(departments):
-            self.dept_table.setItem(row, 0, QTableWidgetItem(str(dept.department_id)))
+            self.dept_table.setItem(row, 0, NumericTableItem(str(dept.department_id)))
             self.dept_table.setItem(row, 1, QTableWidgetItem(dept.name))
 
     def _open_add_employee_dialog(self) -> None:
