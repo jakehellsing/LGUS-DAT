@@ -4,9 +4,13 @@
 
 ### Current Version
 
-`v0.30.0`
+`v0.31.0`
 
 ### Status
+
+Pre-populated the SQLite registry with **19 municipal departments** and their department heads/positions from the submitted reference documents. The seed uses a `department_seed_version` marker so existing departments are overwritten once on the next app start, while future edits through the UI are preserved across restarts. **14 standard leave/status types** (Civil Service Form No. 6 leave types plus `Fieldwork`) are also pre-populated using the same versioned-seed approach, replacing the previous generic defaults.
+
+Fixed DTR PDF `Remarks` cell text overflow: the column is wider, the font is smaller, and all remark cells are now `Paragraph` objects that wrap at word boundaries instead of squeezing or clipping long leave names such as `Special Privilege Leave` and `Special Leave Benefits for Women`.
 
 Added an **Attendance Filing** page to the PySide6 desktop UI with three tabs: **Holidays** for system-wide holiday dates, **Leave Types** for a master status list, and **File Leave/Status** for per-employee date-range filings. The DTR PDF now looks up these holidays and filings when generating the monthly report and prints the status label(s) in the `Remarks` column; when both a holiday and an employee filing apply, the labels are combined. If no holiday or filing exists for a day, the column still shows the weekday abbreviation.
 
@@ -78,6 +82,10 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] Numeric sorting for ID columns in Employees/Departments/Positions tables
 - [x] Stale-row fix for filter/sort in the employee table
 - [x] DTR PDF layout matching the reference government form with title, AM/PM/Undertime/Remarks, certification, signature, and two side-by-side copies per page
+- [x] Pre-populated department defaults with heads and positions from reference documents
+- [x] Pre-populated standard leave/status type defaults from Civil Service Form No. 6 plus `Fieldwork`
+- [x] Versioned seeding for departments and leave types so defaults overwrite once but preserve future UI edits
+- [x] DTR PDF `Remarks` cell word-wrap and font-size fix for long leave/status labels
 - [x] Attendance Filing page with system-wide holidays, master leave/status types, and per-employee date-range filings
 - [x] Dynamic DTR Remarks that print holiday and/or leave status labels instead of weekday abbreviations
 - [x] Employee and department sorting by ID or name
@@ -142,6 +150,8 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 ||| v0.29.0 | 2026-09-02 | Added Attendance Filing page with holidays, leave/status types, and per-employee date-range filings; DTR Remarks now prints status labels and `Fieldwork` days have zero undertime. |
 
 || v0.30.0 | 2026-09-02 | Completed Tkinter-to-PySide6 migration: removed legacy `ui/`, moved shared controller/filters to `core/`, cleaned dead code and build artifacts, aligned CI build with `lgus-dat-desktop-V{VERSION}`, and updated project docs. |
+
+|| v0.31.0 | 2026-09-02 | Pre-populated 19 municipal departments and 14 standard leave/status types using versioned seeds; fixed DTR PDF `Remarks` cell overflow for long leave labels by widening the column, reducing font size, and enabling word-wrap. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 

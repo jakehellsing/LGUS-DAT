@@ -301,9 +301,10 @@ def _create_employee_page(
     remark_style = ParagraphStyle(
         "Remark",
         parent=styles["Normal"],
-        fontSize=6,
-        leading=7,
+        fontSize=5,
+        leading=6,
         alignment=TA_CENTER,
+        splitLongWords=False,
     )
     cert_text = (
         "I CERTIFY on my honor that the above is a true and correct report of the hours of work performed, "
@@ -361,7 +362,7 @@ def _create_employee_page(
             holidays_by_day,
             employee_status_by_day,
         )
-        remark_cell = Paragraph(remark, remark_style) if holidays_by_day or employee_status_by_day else remark
+        remark_cell = Paragraph(remark, remark_style)
         row = [
             str(day),
             _format_time(punches.in_am),
@@ -387,7 +388,7 @@ def _create_employee_page(
         0.52 * inch,
         0.33 * inch,
         0.33 * inch,
-        0.45 * inch,
+        0.66 * inch,
     ]
     scale = page_width / base_dtr_width
     dtr_col_widths = [w * scale for w in base_col_widths]

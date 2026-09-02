@@ -16,6 +16,52 @@ from lgus_dat.domain.holiday import Holiday
 from lgus_dat.parser.dat_parser import ParsedRecord
 
 
+DEFAULT_DEPARTMENTS: list[Department] = [
+    Department(department_id=1, name="OFFICE OF THE MUNICIPAL MAYOR", head_name="Hon. Joel Molina Ventura", head_position="Municipal Mayor"),
+    Department(department_id=2, name="OFFICE OF THE MUNICIPAL ACCOUNTANT", head_name="Johnmar A. Jaipuddin", head_position="MGDH - I Mun. Accountant"),
+    Department(department_id=3, name="OFFICE OF THE MUNICIPAL ADMINISTRATOR", head_name="Ruth Molina Ventura", head_position="Municipal Administrator"),
+    Department(department_id=4, name="OFFICE OF THE MUNICIPAL HUMAN RESOURCE MANAGEMENT OFFICER", head_name="Lilamay Unadi Surbito", head_position="MHRMO"),
+    Department(department_id=5, name="OFFICE OF THE MUNICIPAL AGRICULTURIST", head_name="Adelyn D. Rivera", head_position="Municipal Agriculturist"),
+    Department(department_id=6, name="OFFICE OF THE MUNICIPAL TREASURER", head_name="Mely Rose Daguno Manuel", head_position="Municipal Treasurer"),
+    Department(department_id=7, name="OFFICE OF THE MUNICIPAL ASSESSOR", head_name="Alhan Mamang Naing", head_position="Municipal Assessor"),
+    Department(department_id=8, name="OFFICE OF THE MUNICIPAL BUDGET OFFICER", head_name="Richelle Joanne T. Duhig", head_position="Municipal Budget Officer"),
+    Department(department_id=9, name="OFFICE OF THE MUNICIPAL COOPERATIVE OFFICER", head_name="Beverly Sunshine P. Maninang", head_position="Municipal Cooperative Officer"),
+    Department(department_id=10, name="OFFICE OF THE MUNICIPAL ENGINEER", head_name="Anwar Kenny Andrew F. Amilasan", head_position="Municipal Engineer"),
+    Department(department_id=11, name="OFFICE OF THE MUNICIPAL CIVIL REGISTRAR", head_name="Hadjinil Naing Pingli", head_position="Municipal Civil Registrar"),
+    Department(department_id=12, name="OFFICE OF THE MUNICIPAL LEGAL OFFICER", head_name="", head_position="MGDH - I Mun. Legal Officer"),
+    Department(department_id=13, name="OFFICE OF THE MUNICIPAL DISASTER RISK REDUCTION MANAGEMENT OFFICER", head_name="Majid J. Arasad", head_position="MDRRMO Officer"),
+    Department(department_id=14, name="OFFICE OF THE MUNICIPAL ENVIRONMENT AND NATURAL RESOURCES OFFICER", head_name="", head_position="MENRO"),
+    Department(department_id=15, name="OFFICE OF THE MUNICIPAL GENERAL SERVICE OFFICER", head_name="Janice L. Vitug", head_position="MGDH - I Mun. General Services Officer"),
+    Department(department_id=16, name="OFFICE OF THE MUNICIPAL PLANNING AND DEVELOPMENT CENTER", head_name="Engr. Ricardo L. Genturalez", head_position="MPDO"),
+    Department(department_id=17, name="OFFICE OF THE MSWDO", head_name="Suralda Asid Mandi", head_position="MSWDO"),
+    Department(department_id=18, name="PESO", head_name="Daud Bakil", head_position="Peso Manager"),
+    Department(department_id=19, name="RHU", head_name="Dra. Derileen D. Edding", head_position="Municipal Health Officer"),
+]
+
+# Bumping this value will re-seed DEFAULT_DEPARTMENTS and overwrite department rows.
+DEPARTMENT_SEED_VERSION = "1"
+
+DEFAULT_LEAVE_TYPES: list[str] = [
+    "Vacation Leave",
+    "Mandatory/Forced Leave",
+    "Sick Leave",
+    "Maternity Leave",
+    "Paternity Leave",
+    "Special Privilege Leave",
+    "Solo Parent Leave",
+    "Study Leave",
+    "10-Day VAWC Leave",
+    "Rehabilitation Privilege",
+    "Special Leave Benefits for Women",
+    "Special Emergency (Calamity) Leave",
+    "Adoption Leave",
+    "Fieldwork",
+]
+
+# Bumping this value will re-seed DEFAULT_LEAVE_TYPES and overwrite leave_type rows.
+LEAVE_TYPE_SEED_VERSION = "1"
+
+
 class AttendanceRegistry:
     """Local registry that maps device user/department IDs to human-readable data."""
 
@@ -103,9 +149,6 @@ class AttendanceRegistry:
                     name TEXT PRIMARY KEY
                 );
 
-                INSERT OR IGNORE INTO leave_types (name) VALUES
-                    ('Leave'), ('Sick Leave'), ('Fieldwork'), ('Holiday');
-
                 CREATE TABLE IF NOT EXISTS holidays (
                     holiday_date TEXT PRIMARY KEY,
                     name TEXT NOT NULL
@@ -123,6 +166,11 @@ class AttendanceRegistry:
 
                 CREATE INDEX IF NOT EXISTS idx_status_filings_employee ON employee_status_filings (employee_id);
                 CREATE INDEX IF NOT EXISTS idx_status_filings_dates ON employee_status_filings (start_date, end_date);
+
+                CREATE TABLE IF NOT EXISTS seed_metadata (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
                 """
             )
             # Migrate older registries that may be missing the raw_record columns.
@@ -152,7 +200,62 @@ class AttendanceRegistry:
                     SELECT DISTINCT position FROM employees WHERE position IS NOT NULL
                     """
                 )
+
+            stored_version = conn.execute(
+                "SELECT value FROM seed_metadata WHERE key = 'department_seed_version'"
+            ).fetchone()
+            if stored_version is None or stored_version["value"] != DEPARTMENT_SEED_VERSION:
+                self._seed_departments(conn)
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO seed_metadata (key, value)
+                    VALUES ('department_seed_version', ?)
+                    """,
+                    (DEPARTMENT_SEED_VERSION,),
+                )
+
+            stored_leave_version = conn.execute(
+                "SELECT value FROM seed_metadata WHERE key = 'leave_type_seed_version'"
+            ).fetchone()
+            if stored_leave_version is None or stored_leave_version["value"] != LEAVE_TYPE_SEED_VERSION:
+                self._seed_leave_types(conn)
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO seed_metadata (key, value)
+                    VALUES ('leave_type_seed_version', ?)
+                    """,
+                    (LEAVE_TYPE_SEED_VERSION,),
+                )
+
             conn.commit()
+
+    def _seed_departments(self, conn: sqlite3.Connection) -> None:
+        """Reset departments to the canonical default list."""
+        conn.execute("DELETE FROM departments")
+        conn.executemany(
+            """
+            INSERT INTO departments (department_id, name, raw_record, head_name, head_position)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    dept.department_id,
+                    dept.name,
+                    dept.raw_record,
+                    dept.head_name,
+                    dept.head_position,
+                )
+                for dept in DEFAULT_DEPARTMENTS
+            ],
+        )
+
+    def _seed_leave_types(self, conn: sqlite3.Connection) -> None:
+        """Reset leave types to the canonical default list."""
+        conn.execute("DELETE FROM leave_types")
+        conn.executemany(
+            "INSERT INTO leave_types (name) VALUES (?)",
+            [(name,) for name in DEFAULT_LEAVE_TYPES],
+        )
 
     def upsert_department(self, department: Department) -> None:
         with self._connection() as conn:
