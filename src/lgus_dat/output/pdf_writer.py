@@ -404,8 +404,6 @@ def _create_employee_page(
                 ("SPAN", (5, 0), (6, 0)),
                 ("SPAN", (7, 0), (7, 1)),
                 # Header styling
-                ("BACKGROUND", (0, 0), (-1, 1), colors.grey),
-                ("TEXTCOLOR", (0, 0), (-1, 1), colors.whitesmoke),
                 ("FONTNAME", (0, 0), (-1, 1), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, 1), 7),
                 ("ALIGN", (0, 0), (-1, 1), "CENTER"),
@@ -424,10 +422,9 @@ def _create_employee_page(
                 ("ALIGN", (0, -1), (-1, -1), "CENTER"),
                 ("VALIGN", (0, -1), (-1, -1), "MIDDLE"),
                 ("ALIGN", (0, -1), (4, -1), "LEFT"),
-                # Grid and striping
+                # Grid
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
                 ("LINEBELOW", (0, 1), (-1, 1), 1, colors.black),
-                ("ROWBACKGROUNDS", (0, 2), (-1, -2), [colors.white, colors.lightgrey]),
             ]
         )
     )
