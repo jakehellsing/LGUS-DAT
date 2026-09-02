@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
+from calendar import monthrange
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+from lgus_dat.domain.attendance_filing import AttendanceFiling
 from lgus_dat.domain.biometric_template import BiometricTemplate
 from lgus_dat.domain.department import Department
 from lgus_dat.domain.employee import Employee
+from lgus_dat.domain.holiday import Holiday
 from lgus_dat.parser.dat_parser import ParsedRecord
 
 
@@ -95,6 +98,31 @@ class AttendanceRegistry:
                 CREATE TABLE IF NOT EXISTS positions (
                     name TEXT PRIMARY KEY
                 );
+
+                CREATE TABLE IF NOT EXISTS leave_types (
+                    name TEXT PRIMARY KEY
+                );
+
+                INSERT OR IGNORE INTO leave_types (name) VALUES
+                    ('Leave'), ('Sick Leave'), ('Fieldwork'), ('Holiday');
+
+                CREATE TABLE IF NOT EXISTS holidays (
+                    holiday_date TEXT PRIMARY KEY,
+                    name TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS employee_status_filings (
+                    filing_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    employee_id TEXT NOT NULL,
+                    start_date TEXT NOT NULL,
+                    end_date TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (employee_id) REFERENCES employees (device_user_id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_status_filings_employee ON employee_status_filings (employee_id);
+                CREATE INDEX IF NOT EXISTS idx_status_filings_dates ON employee_status_filings (start_date, end_date);
                 """
             )
             # Migrate older registries that may be missing the raw_record columns.
@@ -478,3 +506,182 @@ class AttendanceRegistry:
                 (name,),
             )
             conn.commit()
+
+    # ------------------------------------------------------------------
+    # Leave / attendance status types
+    # ------------------------------------------------------------------
+
+    def all_leave_types(self) -> list[str]:
+        """Return all leave/attendance status types in alphabetical order."""
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT name FROM leave_types ORDER BY name"
+            ).fetchall()
+        return [row["name"] for row in rows]
+
+    def add_leave_type(self, name: str) -> None:
+        """Insert a new leave/attendance status type."""
+        with self._connection() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO leave_types (name) VALUES (?)",
+                (name,),
+            )
+            conn.commit()
+
+    def rename_leave_type(self, old_name: str, new_name: str) -> None:
+        """Rename a status type and update all filings using it."""
+        with self._connection() as conn:
+            conn.execute(
+                "UPDATE OR IGNORE leave_types SET name = ? WHERE name = ?",
+                (new_name, old_name),
+            )
+            conn.execute(
+                "UPDATE employee_status_filings SET status = ? WHERE status = ?",
+                (new_name, old_name),
+            )
+            conn.commit()
+
+    def delete_leave_type(self, name: str) -> None:
+        """Delete a status type and remove filings that use it."""
+        with self._connection() as conn:
+            conn.execute("DELETE FROM leave_types WHERE name = ?", (name,))
+            conn.execute(
+                "DELETE FROM employee_status_filings WHERE status = ?",
+                (name,),
+            )
+            conn.commit()
+
+    # ------------------------------------------------------------------
+    # System-wide holidays
+    # ------------------------------------------------------------------
+
+    def upsert_holiday(self, holiday: Holiday) -> None:
+        """Insert or replace a system-wide holiday."""
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO holidays (holiday_date, name)
+                VALUES (?, ?)
+                ON CONFLICT(holiday_date) DO UPDATE SET
+                    name = excluded.name
+                """,
+                (holiday.holiday_date.isoformat(), holiday.name),
+            )
+            conn.commit()
+
+    def delete_holiday(self, holiday_date: date) -> None:
+        """Delete a system-wide holiday by date."""
+        with self._connection() as conn:
+            conn.execute(
+                "DELETE FROM holidays WHERE holiday_date = ?",
+                (holiday_date.isoformat(),),
+            )
+            conn.commit()
+
+    def all_holidays(self) -> list[Holiday]:
+        """Return all holidays in date order."""
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT holiday_date, name FROM holidays ORDER BY holiday_date"
+            ).fetchall()
+        return [Holiday(holiday_date=date.fromisoformat(row["holiday_date"]), name=row["name"]) for row in rows]
+
+    def get_holidays_for_month(self, year: int, month: int) -> dict[int, str]:
+        """Return a mapping of day-of-month to holiday name for a given month."""
+        first = date(year, month, 1).isoformat()
+        last = date(year, month, monthrange(year, month)[1]).isoformat()
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT holiday_date, name FROM holidays WHERE holiday_date BETWEEN ? AND ? ORDER BY holiday_date",
+                (first, last),
+            ).fetchall()
+        return {date.fromisoformat(row["holiday_date"]).day: row["name"] for row in rows}
+
+    # ------------------------------------------------------------------
+    # Employee attendance status filings
+    # ------------------------------------------------------------------
+
+    def file_employee_status(self, filing: AttendanceFiling) -> None:
+        """Store an employee attendance status filing over a date range."""
+        created_at = datetime.now().isoformat()
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO employee_status_filings
+                (employee_id, start_date, end_date, status, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    filing.employee_id,
+                    filing.start_date.isoformat(),
+                    filing.end_date.isoformat(),
+                    filing.status,
+                    created_at,
+                ),
+            )
+            conn.commit()
+
+    def delete_employee_status_filing(self, filing_id: int) -> None:
+        """Delete an employee attendance status filing."""
+        with self._connection() as conn:
+            conn.execute(
+                "DELETE FROM employee_status_filings WHERE filing_id = ?",
+                (filing_id,),
+            )
+            conn.commit()
+
+    def all_employee_status_filings(self) -> list[AttendanceFiling]:
+        """Return all employee status filings, most recent first."""
+        with self._connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT filing_id, employee_id, start_date, end_date, status
+                FROM employee_status_filings
+                ORDER BY start_date DESC, filing_id DESC
+                """
+            ).fetchall()
+        return [
+            AttendanceFiling(
+                filing_id=row["filing_id"],
+                employee_id=row["employee_id"],
+                start_date=date.fromisoformat(row["start_date"]),
+                end_date=date.fromisoformat(row["end_date"]),
+                status=row["status"],
+            )
+            for row in rows
+        ]
+
+    def get_employee_status_for_month(
+        self,
+        employee_id: str,
+        year: int,
+        month: int,
+    ) -> dict[int, list[str]]:
+        """Return a mapping of day-of-month to status labels for an employee."""
+        first_day = date(year, month, 1)
+        last_day = date(year, month, monthrange(year, month)[1])
+        with self._connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT start_date, end_date, status
+                FROM employee_status_filings
+                WHERE employee_id = ?
+                  AND start_date <= ?
+                  AND end_date >= ?
+                ORDER BY created_at
+                """,
+                (employee_id, last_day.isoformat(), first_day.isoformat()),
+            ).fetchall()
+
+        result: dict[int, list[str]] = {}
+        for row in rows:
+            start = date.fromisoformat(row["start_date"])
+            end = date.fromisoformat(row["end_date"])
+            status = row["status"]
+            range_start = max(start, first_day)
+            range_end = min(end, last_day)
+            current = range_start
+            while current <= range_end:
+                result.setdefault(current.day, []).append(status)
+                current += timedelta(days=1)
+        return result

@@ -1,0 +1,370 @@
+"""Attendance filing page for holidays, leave types, and employee status."""
+
+from __future__ import annotations
+
+from datetime import date
+
+from PySide6.QtCore import Qt, QDate
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDateEdit,
+    QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTabWidget,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from lgus_dat.desktop.desktop_controller import DesktopController
+from lgus_dat.domain.attendance_filing import AttendanceFiling
+from lgus_dat.domain.holiday import Holiday
+
+
+class AttendanceFilingPage(QWidget):
+    """Page for configuring holidays, status types, and employee filings."""
+
+    def __init__(self, controller: DesktopController, parent=None) -> None:
+        super().__init__(parent)
+        self.controller = controller
+        self._build_ui()
+        self._refresh()
+
+    def _build_ui(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
+
+        header = QLabel("Attendance Filing")
+        header.setStyleSheet("font-size: 24px; font-weight: bold;")
+        layout.addWidget(header)
+
+        self.tabs = QTabWidget()
+
+        self.holidays_tab = QWidget()
+        self._build_holidays_tab()
+        self.tabs.addTab(self.holidays_tab, "Holidays")
+
+        self.leave_types_tab = QWidget()
+        self._build_leave_types_tab()
+        self.tabs.addTab(self.leave_types_tab, "Leave Types")
+
+        self.filings_tab = QWidget()
+        self._build_filings_tab()
+        self.tabs.addTab(self.filings_tab, "File Leave/Status")
+
+        layout.addWidget(self.tabs)
+
+    # ------------------------------------------------------------------
+    # Holidays tab
+    # ------------------------------------------------------------------
+
+    def _build_holidays_tab(self) -> None:
+        layout = QVBoxLayout(self.holidays_tab)
+
+        controls = QHBoxLayout()
+        controls.setSpacing(12)
+
+        self.holiday_date = QDateEdit()
+        self.holiday_date.setCalendarPopup(True)
+        self.holiday_date.setDisplayFormat("yyyy-MM-dd")
+        self.holiday_date.setDate(QDate.currentDate())
+        controls.addWidget(QLabel("Date:"))
+        controls.addWidget(self.holiday_date)
+
+        self.holiday_name = QLineEdit()
+        self.holiday_name.setPlaceholderText("Holiday Name")
+        controls.addWidget(self.holiday_name)
+
+        add_holiday_btn = QPushButton("Add Holiday")
+        add_holiday_btn.clicked.connect(self._add_holiday)
+        controls.addWidget(add_holiday_btn)
+
+        del_holiday_btn = QPushButton("Delete Selected")
+        del_holiday_btn.clicked.connect(self._delete_holiday)
+        controls.addWidget(del_holiday_btn)
+
+        controls.addStretch()
+        layout.addLayout(controls)
+
+        self.holidays_table = QTableWidget()
+        self.holidays_table.setColumnCount(2)
+        self.holidays_table.setHorizontalHeaderLabels(["Date", "Name"])
+        self.holidays_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.holidays_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.holidays_table.setSortingEnabled(True)
+        layout.addWidget(self.holidays_table)
+
+    def _refresh_holidays(self) -> None:
+        self.holidays_table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+        self.holidays_table.setRowCount(0)
+        holidays = self.controller.registry.all_holidays()
+        self.holidays_table.setRowCount(len(holidays))
+        for row, holiday in enumerate(holidays):
+            self.holidays_table.setItem(row, 0, QTableWidgetItem(holiday.holiday_date.isoformat()))
+            self.holidays_table.setItem(row, 1, QTableWidgetItem(holiday.name))
+
+    def _add_holiday(self) -> None:
+        name = self.holiday_name.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Missing Data", "Holiday name is required.")
+            return
+
+        qdate = self.holiday_date.date()
+        holiday = Holiday(
+            holiday_date=date(qdate.year(), qdate.month(), qdate.day()),
+            name=name,
+        )
+        self.controller.registry.upsert_holiday(holiday)
+        self.holiday_name.clear()
+        self._refresh_holidays()
+
+    def _delete_holiday(self) -> None:
+        selected = self.holidays_table.selectedItems()
+        if not selected:
+            QMessageBox.warning(self, "No Selection", "Please select a holiday to delete.")
+            return
+
+        row = selected[0].row()
+        date_text = self.holidays_table.item(row, 0).text()
+        self.controller.registry.delete_holiday(date.fromisoformat(date_text))
+        self._refresh_holidays()
+
+    # ------------------------------------------------------------------
+    # Leave types tab
+    # ------------------------------------------------------------------
+
+    def _build_leave_types_tab(self) -> None:
+        layout = QVBoxLayout(self.leave_types_tab)
+
+        controls = QHBoxLayout()
+        controls.setSpacing(12)
+
+        self.leave_type_input = QLineEdit()
+        self.leave_type_input.setPlaceholderText("Leave / Status Type")
+        controls.addWidget(self.leave_type_input)
+
+        add_type_btn = QPushButton("Add")
+        add_type_btn.clicked.connect(self._add_leave_type)
+        controls.addWidget(add_type_btn)
+
+        edit_type_btn = QPushButton("Edit")
+        edit_type_btn.clicked.connect(self._edit_leave_type)
+        controls.addWidget(edit_type_btn)
+
+        del_type_btn = QPushButton("Delete")
+        del_type_btn.clicked.connect(self._delete_leave_type)
+        controls.addWidget(del_type_btn)
+
+        controls.addStretch()
+        layout.addLayout(controls)
+
+        self.leave_types_table = QTableWidget()
+        self.leave_types_table.setColumnCount(1)
+        self.leave_types_table.setHorizontalHeaderLabels(["Leave / Status Type"])
+        self.leave_types_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.leave_types_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.leave_types_table.setSortingEnabled(True)
+        layout.addWidget(self.leave_types_table)
+
+    def _refresh_leave_types(self) -> None:
+        self.leave_types_table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+        self.leave_types_table.setRowCount(0)
+        leave_types = self.controller.registry.all_leave_types()
+        self.leave_types_table.setRowCount(len(leave_types))
+        for row, name in enumerate(leave_types):
+            self.leave_types_table.setItem(row, 0, QTableWidgetItem(name))
+
+    def _add_leave_type(self) -> None:
+        name = self.leave_type_input.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Missing Data", "Leave/Status type name is required.")
+            return
+        self.controller.registry.add_leave_type(name)
+        self.leave_type_input.clear()
+        self._refresh_leave_types()
+        self._refresh_status_combos()
+
+    def _edit_leave_type(self) -> None:
+        selected = self.leave_types_table.selectedItems()
+        if not selected:
+            QMessageBox.warning(self, "No Selection", "Please select a type to edit.")
+            return
+
+        row = selected[0].row()
+        old_name = self.leave_types_table.item(row, 0).text()
+        new_name, ok = QInputDialog.getText(
+            self, "Edit Type", f"Rename '{old_name}' to:", text=old_name
+        )
+        if not ok or not new_name.strip() or new_name.strip() == old_name:
+            return
+
+        self.controller.registry.rename_leave_type(old_name, new_name.strip())
+        self._refresh_leave_types()
+        self._refresh_status_combos()
+
+    def _delete_leave_type(self) -> None:
+        selected = self.leave_types_table.selectedItems()
+        if not selected:
+            QMessageBox.warning(self, "No Selection", "Please select a type to delete.")
+            return
+
+        row = selected[0].row()
+        name = self.leave_types_table.item(row, 0).text()
+        self.controller.registry.delete_leave_type(name)
+        self._refresh_leave_types()
+        self._refresh_status_combos()
+
+    # ------------------------------------------------------------------
+    # Employee filings tab
+    # ------------------------------------------------------------------
+
+    def _build_filings_tab(self) -> None:
+        layout = QVBoxLayout(self.filings_tab)
+
+        controls = QHBoxLayout()
+        controls.setSpacing(12)
+
+        controls.addWidget(QLabel("Employee:"))
+        self.employee_combo = QComboBox()
+        self.employee_combo.setMinimumWidth(220)
+        controls.addWidget(self.employee_combo)
+
+        controls.addWidget(QLabel("Start:"))
+        self.start_date = QDateEdit()
+        self.start_date.setCalendarPopup(True)
+        self.start_date.setDisplayFormat("yyyy-MM-dd")
+        self.start_date.setDate(QDate.currentDate())
+        controls.addWidget(self.start_date)
+
+        controls.addWidget(QLabel("End:"))
+        self.end_date = QDateEdit()
+        self.end_date.setCalendarPopup(True)
+        self.end_date.setDisplayFormat("yyyy-MM-dd")
+        self.end_date.setDate(QDate.currentDate())
+        controls.addWidget(self.end_date)
+
+        controls.addWidget(QLabel("Status:"))
+        self.status_combo = QComboBox()
+        self.status_combo.setMinimumWidth(140)
+        controls.addWidget(self.status_combo)
+
+        add_filing_btn = QPushButton("File")
+        add_filing_btn.clicked.connect(self._add_filing)
+        controls.addWidget(add_filing_btn)
+
+        del_filing_btn = QPushButton("Delete Selected")
+        del_filing_btn.clicked.connect(self._delete_filing)
+        controls.addWidget(del_filing_btn)
+
+        controls.addStretch()
+        layout.addLayout(controls)
+
+        self.filings_table = QTableWidget()
+        self.filings_table.setColumnCount(6)
+        self.filings_table.setHorizontalHeaderLabels(["Employee ID", "Employee Name", "Start", "End", "Status", "Filing ID"])
+        self.filings_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.filings_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.filings_table.setColumnHidden(5, True)
+        self.filings_table.setSortingEnabled(True)
+        layout.addWidget(self.filings_table)
+
+    def _refresh_employee_combo(self) -> None:
+        current = self.employee_combo.currentData()
+        self.employee_combo.clear()
+        for emp in self.controller.registry.all_employees():
+            self.employee_combo.addItem(f"{emp.device_user_id} - {emp.name}", emp.device_user_id)
+
+        for i in range(self.employee_combo.count()):
+            if self.employee_combo.itemData(i) == current:
+                self.employee_combo.setCurrentIndex(i)
+                break
+
+    def _refresh_status_combos(self) -> None:
+        current = self.status_combo.currentData()
+        self.status_combo.clear()
+        for name in self.controller.registry.all_leave_types():
+            self.status_combo.addItem(name, name)
+
+        for i in range(self.status_combo.count()):
+            if self.status_combo.itemData(i) == current:
+                self.status_combo.setCurrentIndex(i)
+                break
+
+    def _refresh_filings(self) -> None:
+        self.filings_table.horizontalHeader().setSortIndicator(-1, Qt.AscendingOrder)
+        self.filings_table.setRowCount(0)
+        filings = self.controller.registry.all_employee_status_filings()
+        self.filings_table.setRowCount(len(filings))
+
+        for row, filing in enumerate(filings):
+            emp = self.controller.registry.get_employee(filing.employee_id)
+            emp_name = emp.name if emp else ""
+            self.filings_table.setItem(row, 0, QTableWidgetItem(filing.employee_id))
+            self.filings_table.setItem(row, 1, QTableWidgetItem(emp_name))
+            self.filings_table.setItem(row, 2, QTableWidgetItem(filing.start_date.isoformat()))
+            self.filings_table.setItem(row, 3, QTableWidgetItem(filing.end_date.isoformat()))
+            self.filings_table.setItem(row, 4, QTableWidgetItem(filing.status))
+            id_item = QTableWidgetItem(str(filing.filing_id) if filing.filing_id else "")
+            id_item.setData(Qt.UserRole, filing.filing_id)
+            self.filings_table.setItem(row, 5, id_item)
+
+    def _add_filing(self) -> None:
+        employee_id = self.employee_combo.currentData()
+        if not employee_id:
+            QMessageBox.warning(self, "Missing Data", "Please select an employee.")
+            return
+
+        status = self.status_combo.currentData()
+        if not status:
+            QMessageBox.warning(self, "Missing Data", "Please select a status.")
+            return
+
+        qstart = self.start_date.date()
+        qend = self.end_date.date()
+        start = date(qstart.year(), qstart.month(), qstart.day())
+        end = date(qend.year(), qend.month(), qend.day())
+
+        if end < start:
+            QMessageBox.warning(self, "Validation", "End date cannot be earlier than start date.")
+            return
+
+        filing = AttendanceFiling(
+            employee_id=employee_id,
+            start_date=start,
+            end_date=end,
+            status=status,
+        )
+        self.controller.registry.file_employee_status(filing)
+        self._refresh_filings()
+
+    def _delete_filing(self) -> None:
+        selected = self.filings_table.selectedItems()
+        if not selected:
+            QMessageBox.warning(self, "No Selection", "Please select a filing to delete.")
+            return
+
+        row = selected[0].row()
+        filing_id = self.filings_table.item(row, 5).data(Qt.UserRole)
+        if filing_id is None:
+            return
+
+        self.controller.registry.delete_employee_status_filing(filing_id)
+        self._refresh_filings()
+
+    # ------------------------------------------------------------------
+    # Page refresh
+    # ------------------------------------------------------------------
+
+    def _refresh(self) -> None:
+        self._refresh_holidays()
+        self._refresh_leave_types()
+        self._refresh_employee_combo()
+        self._refresh_status_combos()
+        self._refresh_filings()

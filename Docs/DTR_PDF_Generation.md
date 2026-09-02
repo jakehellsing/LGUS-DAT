@@ -17,13 +17,14 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
     - **AM** (Arrival, Departure)
     - **PM** (Arrival, Departure)
     - **Undertime** (Hr, Min)
-    - **Remarks** (weekday abbreviation)
+    - **Remarks** (weekday abbreviation, or a holiday / leave status label)
   - `TOTAL =` line below the table showing the monthly totals in the **Undertime Hr** and **Undertime Min** columns
   - Certification text: *"I CERTIFY on my honor..."*
   - Signature line for the employee
   - Signature line for the department's `head_name` and `head_position`; `head_position` replaces the generic `Verifying Officer` label when set
 
 ### Data Processing
+- **Holiday and leave status remarks**: System-wide holidays and per-employee filed status ranges are looked up for the report month. When present, the DTR `Remarks` cell prints the holiday name and/or status label instead of the weekday; both may be combined with ` / `.
 - **Duplicate handling**: When duplicate punches with the same employee_id, date, and timestamp are found, only the first occurrence is used
 - **4-punch mapping**: The first 4 punches per day are mapped to the 4 time slots:
   - 1st punch → AM Arrival

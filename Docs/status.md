@@ -8,6 +8,8 @@
 
 ### Status
 
+Added an **Attendance Filing** page to the PySide6 desktop UI with three tabs: **Holidays** for system-wide holiday dates, **Leave Types** for a master status list, and **File Leave/Status** for per-employee date-range filings. The DTR PDF now looks up these holidays and filings when generating the monthly report and prints the status label(s) in the `Remarks` column; when both a holiday and an employee filing apply, the labels are combined. If no holiday or filing exists for a day, the column still shows the weekday abbreviation.
+
 Added `head_position` to the `Department` model. The DTR PDF signature line now prints the department head name and position, replacing the generic `Verifying Officer` label. Both the PySide6 and Tkinter department management UIs include a `Head Position` field. The head name and position are stored in the local SQLite registry and do not affect the binary `department.dat` import/export.
 
 The DTR PDF now calculates daily undertime for Monday-Friday workdays against the official 8:00 AM - 5:00 PM schedule. Late arrivals after 8:00 AM and early departures before 5:00 PM are counted in whole minutes and shown in the Undertime Hr/Min columns. Weekends are excluded and two-punch days use the final departure as the end time.
@@ -77,6 +79,8 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] Numeric sorting for ID columns in Employees/Departments/Positions tables
 - [x] Stale-row fix for filter/sort in the employee table
 - [x] DTR PDF layout matching the reference government form with title, AM/PM/Undertime/Remarks, certification, signature, and two side-by-side copies per page
+- [x] Attendance Filing page with system-wide holidays, master leave/status types, and per-employee date-range filings
+- [x] Dynamic DTR Remarks that print holiday and/or leave status labels instead of weekday abbreviations
 - [x] Employee and department sorting by ID or name
 - [x] Progress dialogs for imports, processing, and exports to keep UI responsive
 - [x] PyInstaller build for the PySide6 desktop executable

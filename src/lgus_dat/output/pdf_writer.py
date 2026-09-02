@@ -132,6 +132,33 @@ def _day_name(year: int, month: int, day: int) -> str:
     return date(year, month, day).strftime("%a").upper()
 
 
+def _remark(
+    year: int,
+    month: int,
+    day: int,
+    holidays_by_day: dict[int, str],
+    employee_status_by_day: dict[int, list[str]],
+) -> str:
+    """Return the DTR Remarks text for a day.
+
+    If a system-wide holiday or employee filed status exists, show those
+    labels; otherwise fall back to the abbreviated weekday.
+    """
+    parts: list[str] = []
+    if day in holidays_by_day:
+        parts.append(holidays_by_day[day])
+
+    seen: set[str] = set(parts)
+    for status in employee_status_by_day.get(day, []):
+        if status not in seen:
+            parts.append(status)
+            seen.add(status)
+
+    if parts:
+        return " / ".join(parts)
+    return _day_name(year, month, day)
+
+
 _OFFICIAL_START = time(8, 0)
 _OFFICIAL_LUNCH_OUT = time(12, 0)
 _OFFICIAL_LUNCH_IN = time(13, 0)
@@ -224,9 +251,14 @@ def _create_employee_page(
     department_head_name: Optional[str] = None,
     department_head_position: Optional[str] = None,
     page_width: float = 3.7 * inch,
+    holidays_by_day: dict[int, str] | None = None,
+    employee_status_by_day: dict[int, list[str]] | None = None,
 ) -> Table:
     """Create a single-column DTR table that fits inside a two-column layout."""
     _, num_days = calendar.monthrange(month.year, month.month)
+
+    holidays_by_day = holidays_by_day or {}
+    employee_status_by_day = employee_status_by_day or {}
 
     display_name = employee_name or employee_id
     month_str = month.strftime("%B %Y")
@@ -259,6 +291,13 @@ def _create_employee_page(
         parent=styles["Normal"],
         fontSize=7,
         leading=9,
+        alignment=TA_CENTER,
+    )
+    remark_style = ParagraphStyle(
+        "Remark",
+        parent=styles["Normal"],
+        fontSize=6,
+        leading=7,
         alignment=TA_CENTER,
     )
     cert_text = (
@@ -309,6 +348,14 @@ def _create_employee_page(
         )
         total_undertime_hr += undertime_hr
         total_undertime_min += undertime_min
+        remark = _remark(
+            month.year,
+            month.month,
+            day,
+            holidays_by_day,
+            employee_status_by_day,
+        )
+        remark_cell = Paragraph(remark, remark_style) if holidays_by_day or employee_status_by_day else remark
         row = [
             str(day),
             _format_time(punches.in_am),
@@ -317,7 +364,7 @@ def _create_employee_page(
             _format_time(punches.out_pm),
             str(undertime_hr) if undertime_hr or undertime_min else "",
             str(undertime_min) if undertime_hr or undertime_min else "",
-            _day_name(month.year, month.month, day),
+            remark_cell,
         ]
         table_data.append(row)
 
@@ -439,6 +486,8 @@ def generate_dtr_pdf(
     employee_positions: Optional[dict[str, str]] = None,
     department_heads: Optional[dict[int, str]] = None,
     department_head_positions: Optional[dict[int, str]] = None,
+    month_holidays: Optional[dict[int, str]] = None,
+    employee_status: Optional[dict[str, dict[int, list[str]]]] = None,
 ) -> None:
     """Generate a DTR PDF report for employees for a given month.
 
@@ -452,7 +501,12 @@ def generate_dtr_pdf(
         employee_positions: Optional dictionary mapping employee_id to position
         department_heads: Optional dictionary mapping department_id to department head name
         department_head_positions: Optional dictionary mapping department_id to department head position
+        month_holidays: Optional mapping of day-of-month to holiday name for the month
+        employee_status: Optional mapping of employee_id to day-of-month to list of status labels
     """
+    holidays_by_day = month_holidays or {}
+    status_by_employee = employee_status or {}
+
     doc = SimpleDocTemplate(
         str(output_path),
         pagesize=letter,
@@ -492,6 +546,8 @@ def generate_dtr_pdf(
         # Map punches to daily slots
         daily_punches = _map_punches_to_daily_slots(records, month)
 
+        employee_status_by_day = status_by_employee.get(employee_id, {})
+
         # Create two copies of the same DTR page side-by-side
         left_page = _create_employee_page(
             employee_id=employee_id,
@@ -503,6 +559,8 @@ def generate_dtr_pdf(
             department_head_name=dept_head_name,
             department_head_position=dept_head_position,
             page_width=col_width,
+            holidays_by_day=holidays_by_day,
+            employee_status_by_day=employee_status_by_day,
         )
         right_page = _create_employee_page(
             employee_id=employee_id,
@@ -514,6 +572,8 @@ def generate_dtr_pdf(
             department_head_name=dept_head_name,
             department_head_position=dept_head_position,
             page_width=col_width,
+            holidays_by_day=holidays_by_day,
+            employee_status_by_day=employee_status_by_day,
         )
 
         outer = Table(

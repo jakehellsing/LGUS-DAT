@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 
 from lgus_dat.desktop.all_records_window import AllRecordsWindow
 from lgus_dat.desktop.desktop_controller import DesktopController
+from lgus_dat.desktop.pages.attendance_filing_page import AttendanceFilingPage
 from lgus_dat.desktop.pages.dashboard_page import DashboardPage
 from lgus_dat.desktop.pages.employees_page import EmployeesPage
 from lgus_dat.desktop.pages.import_page import ImportPage
@@ -58,12 +59,15 @@ class MainWindow(QMainWindow):
         self.processed_page = ProcessedPage(self.controller)
         self.import_page.process_requested.connect(self._on_process_requested)
 
+        self.filing_page = AttendanceFilingPage(self.controller)
+
         self.pages: dict[str, QWidget] = {
             "Dashboard": self.dashboard_page,
             "Import": self.import_page,
             "Processed": self.processed_page,
             "Reports": ReportsPage(self.controller),
             "Employees": EmployeesPage(self.controller),
+            "Filing": self.filing_page,
             "Settings": SettingsPage(),
         }
         for page in self.pages.values():
@@ -100,7 +104,7 @@ class MainWindow(QMainWindow):
         sidebar_layout.addSpacing(24)
 
         self.nav_buttons: list[QPushButton] = []
-        for name in ["Dashboard", "Import", "Processed", "Reports", "Employees", "Settings"]:
+        for name in ["Dashboard", "Import", "Processed", "Reports", "Employees", "Filing", "Settings"]:
             btn = QPushButton(name)
             btn.setCheckable(True)
             btn.setAutoExclusive(True)

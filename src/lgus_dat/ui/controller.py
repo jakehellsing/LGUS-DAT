@@ -323,6 +323,12 @@ class UIController:
         # Group records by employee
         grouped = group_records_by_employee(filtered_records)
 
+        holidays = self.registry.get_holidays_for_month(month.year, month.month)
+        employee_status = {
+            emp_id: self.registry.get_employee_status_for_month(emp_id, month.year, month.month)
+            for emp_id in grouped
+        }
+
         generate_dtr_pdf(
             employee_records=grouped,
             month=month,
@@ -333,6 +339,8 @@ class UIController:
             employee_positions=employee_positions,
             department_heads=department_heads,
             department_head_positions=department_head_positions,
+            month_holidays=holidays,
+            employee_status=employee_status,
         )
         
         return str(path), len(filtered_records)

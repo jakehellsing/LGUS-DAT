@@ -851,3 +851,40 @@ may be added as the project evolves:
 -   Web-based or mobile companion
 -   Advanced payroll export formats
 -   Shift schedules and overtime rules
+
+------------------------------------------------------------------------
+
+## 27. Attendance Filing and DTR Remarks
+
+The PySide6 desktop UI provides an **Attendance Filing** page where HR users can
+configure attendance statuses that modify the DTR `Remarks` column.
+
+### Holiday master (system-wide)
+
+-   Stored in the `holidays` table (`holiday_date` primary key, `name`).
+-   Affects every employee on that calendar date.
+-   Managed from the **Holidays** tab under **Attendance Filing**.
+
+### Leave / attendance status types
+
+-   Stored in the `leave_types` table, similar to the `positions` master list.
+-   Pre-populated with `Leave`, `Sick Leave`, `Fieldwork`, `Holiday`.
+-   CRUD is available in the **Leave Types** tab.
+
+### Employee status filing
+
+-   Stored in the `employee_status_filings` table.
+-   Each filing links an employee, a start and end date, and a status type.
+-   Consecutive days are supported via a date range.
+-   The **File Leave/Status** tab lets the user pick an employee, a range, and
+    a status.
+
+### DTR output
+
+-   The DTR `Remarks` column falls back to the abbreviated weekday (MON, TUE,
+    etc.) when no holiday or filing exists.
+-   When a system-wide holiday applies, the holiday name is printed.
+-   When an employee has a filed status, the status type name is printed.
+-   If both apply to the same day, they are combined with ` / `.
+-   Any biometric punches for that day are still printed in the AM/PM time
+    slots.
