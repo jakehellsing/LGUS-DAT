@@ -112,6 +112,7 @@ You can also import the device's `user.dat` to resolve employee names from numer
 
 **Department Management Features:**
 - Dropdown department selection for employee assignment (shows department names instead of IDs)
+- Department `head_name` field used as the DTR PDF Verifying Officer signature
 - Department details view with employee count and member management
 - Add/remove employees from departments with visual interface
 - Safety checks to prevent deletion of departments with assigned employees
@@ -125,9 +126,9 @@ To build the PySide6 desktop app locally with PyInstaller:
 
 ```bash
 pip install -e ".[build]"
-pyinstaller --onefile --windowed --name lgus-dat-desktop-V0.22.1 --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
+pyinstaller --onefile --windowed --name lgus-dat-desktop-V0.26.0 --distpath dist/desktop --workpath build/desktop --noconfirm src/lgus_dat/desktop/app.py
 ```
 
-Replace `V0.22.0` with the current version from `pyproject.toml`.
+Replace `V0.26.0` with the current version from `pyproject.toml`.
 
-The output will be in `dist/desktop/lgus-dat-desktop-V0.22.1.exe` (Windows) or `dist/desktop/lgus-dat-desktop-V0.22.1` (Linux).
+The output will be in `dist/desktop/lgus-dat-desktop-V0.26.0.exe` (Windows) or `dist/desktop/lgus-dat-desktop-V0.26.0` (Linux).

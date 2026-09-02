@@ -13,3 +13,4 @@ class Department:
     department_id: int
     name: str
     raw_record: Optional[bytes] = None
+    head_name: Optional[str] = None

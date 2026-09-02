@@ -40,7 +40,8 @@ class AttendanceRegistry:
                 CREATE TABLE IF NOT EXISTS departments (
                     department_id INTEGER PRIMARY KEY,
                     name TEXT NOT NULL,
-                    raw_record BLOB
+                    raw_record BLOB,
+                    head_name TEXT
                 );
 
                 CREATE TABLE IF NOT EXISTS employees (
@@ -104,6 +105,8 @@ class AttendanceRegistry:
                 conn.execute("ALTER TABLE employees ADD COLUMN full_name TEXT")
             if "position" not in self._columns(conn, "employees"):
                 conn.execute("ALTER TABLE employees ADD COLUMN position TEXT")
+            if "head_name" not in self._columns(conn, "departments"):
+                conn.execute("ALTER TABLE departments ADD COLUMN head_name TEXT")
             if "positions" not in self._tables(conn):
                 conn.execute(
                     """
@@ -124,16 +127,18 @@ class AttendanceRegistry:
         with self._connection() as conn:
             conn.execute(
                 """
-                INSERT INTO departments (department_id, name, raw_record)
-                VALUES (?, ?, ?)
+                INSERT INTO departments (department_id, name, raw_record, head_name)
+                VALUES (?, ?, ?, ?)
                 ON CONFLICT(department_id) DO UPDATE SET
                     name = excluded.name,
-                    raw_record = excluded.raw_record
+                    raw_record = excluded.raw_record,
+                    head_name = excluded.head_name
                 """,
                 (
                     department.department_id,
                     department.name,
                     department.raw_record,
+                    department.head_name,
                 ),
             )
             conn.commit()
@@ -207,6 +212,7 @@ class AttendanceRegistry:
             department_id=row["department_id"],
             name=row["name"],
             raw_record=row["raw_record"],
+            head_name=row["head_name"],
         )
 
     def get_employee(self, device_user_id: str) -> Optional[Employee]:
@@ -222,7 +228,7 @@ class AttendanceRegistry:
     def get_department(self, department_id: int) -> Optional[Department]:
         with self._connection() as conn:
             row = conn.execute(
-                "SELECT department_id, name, raw_record FROM departments WHERE department_id = ?",
+                "SELECT department_id, name, raw_record, head_name FROM departments WHERE department_id = ?",
                 (department_id,),
             ).fetchone()
         if row:
@@ -241,9 +247,13 @@ class AttendanceRegistry:
     def all_departments(self) -> list[Department]:
         with self._connection() as conn:
             rows = conn.execute(
-                "SELECT department_id, name, raw_record FROM departments ORDER BY department_id"
+                "SELECT department_id, name, raw_record, head_name FROM departments ORDER BY department_id"
             ).fetchall()
         return [self._row_to_department(row) for row in rows]
+
+    def department_head_name(self, department_id: int) -> Optional[str]:
+        dept = self.get_department(department_id)
+        return dept.head_name if dept else None
 
     def _row_to_biotemplate(self, row: sqlite3.Row) -> BiometricTemplate:
         return BiometricTemplate(

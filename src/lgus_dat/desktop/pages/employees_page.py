@@ -126,6 +126,49 @@ class EmployeeEditDialog(QDialog):
         self.accept()
 
 
+class DepartmentEditDialog(QDialog):
+    """Modal dialog for editing a department."""
+
+    def __init__(self, controller: DesktopController, department: Department, parent=None) -> None:
+        super().__init__(parent)
+        self.controller = controller
+        self.department = department
+        self.setWindowTitle("Edit Department")
+        self.setModal(True)
+        self._build_ui()
+
+    def _build_ui(self) -> None:
+        layout = QFormLayout(self)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        self.id_edit = QLineEdit(str(self.department.department_id))
+        self.id_edit.setReadOnly(True)
+        layout.addRow("Department ID:", self.id_edit)
+
+        self.name_edit = QLineEdit(self.department.name)
+        layout.addRow("Name:", self.name_edit)
+
+        self.head_edit = QLineEdit(self.department.head_name or "")
+        layout.addRow("Head Name (DTR only):", self.head_edit)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self._save)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def _save(self) -> None:
+        name = self.name_edit.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Missing Data", "Department name is required.")
+            return
+
+        head_name = self.head_edit.text().strip() or None
+        updated = replace(self.department, name=name, head_name=head_name)
+        self.controller.registry.upsert_department(updated)
+        self.accept()
+
+
 class EmployeeAddDialog(QDialog):
     """Modal dialog for adding a new employee."""
 
@@ -311,9 +354,17 @@ class EmployeesPage(QWidget):
         self.dept_name_input.setPlaceholderText("Department Name")
         dept_controls.addWidget(self.dept_name_input)
 
+        self.dept_head_input = QLineEdit()
+        self.dept_head_input.setPlaceholderText("Department Head Name")
+        dept_controls.addWidget(self.dept_head_input)
+
         add_dept_btn = QPushButton("Add Department")
         add_dept_btn.clicked.connect(self._add_department)
         dept_controls.addWidget(add_dept_btn)
+
+        edit_dept_btn = QPushButton("Edit Selected")
+        edit_dept_btn.clicked.connect(self._edit_department)
+        dept_controls.addWidget(edit_dept_btn)
 
         del_dept_btn = QPushButton("Delete Selected")
         del_dept_btn.clicked.connect(self._delete_department)
@@ -332,8 +383,8 @@ class EmployeesPage(QWidget):
         dept_layout.addLayout(dept_sort_layout)
 
         self.dept_table = QTableWidget()
-        self.dept_table.setColumnCount(2)
-        self.dept_table.setHorizontalHeaderLabels(["Department ID", "Name"])
+        self.dept_table.setColumnCount(3)
+        self.dept_table.setHorizontalHeaderLabels(["Department ID", "Name", "Head Name"])
         self.dept_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.dept_table.horizontalHeader().setStretchLastSection(True)
         self.dept_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -542,6 +593,7 @@ class EmployeesPage(QWidget):
         for row, dept in enumerate(departments):
             self.dept_table.setItem(row, 0, NumericTableItem(str(dept.department_id)))
             self.dept_table.setItem(row, 1, QTableWidgetItem(dept.name))
+            self.dept_table.setItem(row, 2, QTableWidgetItem(dept.head_name or ""))
 
     def _open_add_employee_dialog(self) -> None:
         dialog = EmployeeAddDialog(self.controller, self)
@@ -592,8 +644,26 @@ class EmployeesPage(QWidget):
             QMessageBox.warning(self, "Missing Data", "Department name is required.")
             return
 
-        department = Department(department_id=dept_id, name=name)
+        head_name = self.dept_head_input.text().strip() or None
+        department = Department(department_id=dept_id, name=name, head_name=head_name)
         self.controller.registry.upsert_department(department)
+        self.dept_name_input.clear()
+        self.dept_head_input.clear()
+        self._refresh_departments()
+
+    def _edit_department(self) -> None:
+        selected = self.dept_table.selectedItems()
+        if not selected:
+            QMessageBox.warning(self, "No Selection", "Please select a department to edit.")
+            return
+        row = selected[0].row()
+        dept_id = int(self.dept_table.item(row, 0).text())
+        department = self.controller.registry.get_department(dept_id)
+        if department is None:
+            return
+
+        dialog = DepartmentEditDialog(self.controller, department, self)
+        dialog.exec()
         self._refresh_departments()
 
     def _delete_department(self) -> None:

@@ -41,7 +41,7 @@ src/lgus_dat/desktop/  # PySide6 desktop interface
     import_page.py     # File import and month-scoped processing
     processed_page.py  # Processed records with search and date filters
     reports_page.py    # DTR PDF, CSV, and attlog export
-    employees_page.py  # Employee and department management
+    employees_page.py  # Employee and department management, including department head name for DTR Verifying Officer
     settings_page.py   # Placeholder settings page
   widgets/             # Reusable widgets
     kpi_card.py        # Dashboard KPI card
@@ -110,6 +110,7 @@ src/lgus_dat/desktop/  # PySide6 desktop interface
 **ManagementDialog**
 - Employee and department management
 - CRUD operations for employees and departments
+- Department `head_name` field for DTR Verifying Officer
 - Device backup import/export
 - Department dropdown selection for employee assignment
 - Department details view with employee management
@@ -121,7 +122,7 @@ src/lgus_dat/desktop/  # PySide6 desktop interface
 
 **Internal Dialog Classes**
 - `_EmployeeDialog`: Employee add/edit with department dropdown
-- `_DepartmentDialog`: Department add/edit with validation
+- `_DepartmentDialog`: Department add/edit with validation and `head_name` field for the DTR Verifying Officer
 - `_DepartmentDetailsDialog`: Department details and employee management
 
 ### Controller (`ui/controller.py`)

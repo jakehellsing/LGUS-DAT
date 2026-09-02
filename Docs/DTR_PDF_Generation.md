@@ -20,7 +20,8 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
     - **Remarks** (weekday abbreviation)
   - `TOTAL =` line below the table
   - Certification text: *"I CERTIFY on my honor..."*
-  - Signature lines for the employee and verifying officer
+  - Signature line for the employee
+  - Signature line for the **Verifying Officer**, populated from the department's `head_name` field when available
 
 ### Data Processing
 - **Duplicate handling**: When duplicate punches with the same employee_id, date, and timestamp are found, only the first occurrence is used
@@ -77,7 +78,8 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
 3. Duplicate records are removed (first occurrence kept)
 4. Records are grouped by day and sorted by timestamp
 5. First 4 punches per day are mapped to time slots
-6. PDF is generated with the government DTR form layout (two copies per page)
+6. The department head name is resolved from the employee's department and printed on the `Verifying Officer` signature line
+7. PDF is generated with the government DTR form layout (two copies per page)
 
 ## Example Scenarios
 

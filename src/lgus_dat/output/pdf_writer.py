@@ -139,6 +139,7 @@ def _create_employee_page(
     daily_punches: dict[int, DailyPunches],
     department_name: Optional[str] = None,
     employee_position: Optional[str] = None,
+    department_head_name: Optional[str] = None,
     page_width: float = 3.7 * inch,
 ) -> Table:
     """Create a single-column DTR table that fits inside a two-column layout."""
@@ -293,13 +294,14 @@ def _create_employee_page(
     )
 
     # Signature block
+    verifying_officer_name = department_head_name or ""
     sig_data = [
         [""],
         [Paragraph(display_name, sig_style)],
         [Paragraph("Employee", sig_style)],
         [""],
         [Paragraph("Verified as to the prescribed office hours", sig_style)],
-        [""],
+        [Paragraph(verifying_officer_name, sig_style)],
         [Paragraph("Verifying Officer", sig_style)],
     ]
     sig_table = Table(
@@ -349,9 +351,10 @@ def generate_dtr_pdf(
     department_names: Optional[dict[int, str]] = None,
     employee_departments: Optional[dict[str, int]] = None,
     employee_positions: Optional[dict[str, str]] = None,
+    department_heads: Optional[dict[int, str]] = None,
 ) -> None:
     """Generate a DTR PDF report for employees for a given month.
-    
+
     Args:
         employee_records: Dictionary mapping employee_id to list of attendance records
         month: The month to generate the report for (day will be ignored)
@@ -360,6 +363,7 @@ def generate_dtr_pdf(
         department_names: Optional dictionary mapping department_id to department name
         employee_departments: Optional dictionary mapping employee_id to department_id
         employee_positions: Optional dictionary mapping employee_id to position
+        department_heads: Optional dictionary mapping department_id to department head name
     """
     doc = SimpleDocTemplate(
         str(output_path),
@@ -384,10 +388,13 @@ def generate_dtr_pdf(
 
         # Get department info if available
         dept_name = None
+        dept_head_name = None
         if employee_departments and department_names:
             dept_id = employee_departments.get(employee_id)
             if dept_id is not None:
                 dept_name = department_names.get(dept_id)
+                if department_heads:
+                    dept_head_name = department_heads.get(dept_id)
 
         employee_position = employee_positions.get(employee_id) if employee_positions else None
 
@@ -402,6 +409,7 @@ def generate_dtr_pdf(
             daily_punches=daily_punches,
             department_name=dept_name,
             employee_position=employee_position,
+            department_head_name=dept_head_name,
             page_width=col_width,
         )
         right_page = _create_employee_page(
@@ -411,6 +419,7 @@ def generate_dtr_pdf(
             daily_punches=daily_punches,
             department_name=dept_name,
             employee_position=employee_position,
+            department_head_name=dept_head_name,
             page_width=col_width,
         )
 
