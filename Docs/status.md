@@ -4,7 +4,7 @@
 
 ### Current Version
 
-`v0.29.0`
+`v0.30.0`
 
 ### Status
 
@@ -140,6 +140,8 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 || v0.28.0 | 2026-09-02 | Added department `head_position` field; DTR signature line now prints head name and position, replacing the generic `Verifying Officer` label. |
 |
 ||| v0.29.0 | 2026-09-02 | Added Attendance Filing page with holidays, leave/status types, and per-employee date-range filings; DTR Remarks now prints status labels and `Fieldwork` days have zero undertime. |
+
+|| v0.30.0 | 2026-09-02 | Completed Tkinter-to-PySide6 migration: removed legacy `ui/`, moved shared controller/filters to `core/`, cleaned dead code and build artifacts, aligned CI build with `lgus-dat-desktop-V{VERSION}`, and updated project docs. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 
