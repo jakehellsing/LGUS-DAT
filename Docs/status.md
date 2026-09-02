@@ -4,11 +4,11 @@
 
 ### Current Version
 
-`v0.25.1`
+`v0.25.2`
 
 ### Status
 
-Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package providing a dashboard, import, processed records with date filters, reports, employees, and settings pages. Raw attendance logs are now persisted and loaded on startup, and month-scoped processing allows users to process only a selected month. A new **All Records** window loads every stored log directly from the registry, processes it on demand, and provides search and date filters so users always see accumulated data. The employee edit dialog in the PySide6 Employees page is now a modal Save dialog and uses a department dropdown and a position dropdown for assignment. The position dropdown is fed by a master Positions tab with full CRUD (add, rename, delete). The Employees tab top row has been converted from an inline add form into search filters for ID, name, full name, position, and department; adding an employee now opens a dedicated `Add Employee` dialog. The DTR PDF report now matches the reference government form with two side-by-side copies per page, a `DAILY TIME RECORD` title, AM/PM/Undertime/Remarks table, certification text, and signature block, and renders an employee's position below their name when set. The legacy Tkinter UI remains in `ui/`.
+Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package providing a dashboard, import, processed records with date filters, reports, employees, and settings pages. Raw attendance logs are now persisted and loaded on startup, and month-scoped processing allows users to process only a selected month. A new **All Records** window loads every stored log directly from the registry, processes it on demand, and provides search and date filters so users always see accumulated data. The employee edit dialog in the PySide6 Employees page is now a modal Save dialog and uses a department dropdown and a position dropdown for assignment. The position dropdown is fed by a master Positions tab with full CRUD (add, rename, delete). The Employees tab top row has been converted from an inline add form into search filters for ID, name, full name, position, and department; adding an employee now opens a dedicated `Add Employee` dialog. The DTR PDF report now matches the reference government form with two side-by-side copies per page, a `DAILY TIME RECORD` title, AM/PM/Undertime/Remarks table, certification text, and signature block, and renders an employee's position below their name when set. Employee table refreshes now fully clear old rows before repopulating to prevent mixed/stale data when filtering, and numeric columns sort as numbers when clicking column headers. A Refresh button was also added to the Employees tab. The legacy Tkinter UI remains in `ui/`.
 
 ### Implemented
 
@@ -67,6 +67,9 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] Employee position dropdown populated from the master positions list
 - [x] Employees tab search filters by ID, name, full name, position, and department
 - [x] Modal `Add Employee` dialog in the PySide6 desktop UI
+- [x] Refresh button on the Employees tab
+- [x] Numeric sorting for ID columns in Employees/Departments/Positions tables
+- [x] Stale-row fix for filter/sort in the employee table
 - [x] DTR PDF layout matching the reference government form with title, AM/PM/Undertime/Remarks, certification, signature, and two side-by-side copies per page
 - [x] Employee and department sorting by ID or name
 - [x] Progress dialogs for imports, processing, and exports to keep UI responsive
@@ -119,6 +122,8 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 | v0.25.0 | 2026-09-01 | Added master Positions tab with CRUD, employee position dropdown, and position rendered below the name on DTR PDF reports. |
 
 | v0.25.1 | 2026-09-01 | Converted the Employees tab top row into search filters and added a dedicated modal `Add Employee` dialog. |
+
+| v0.25.2 | 2026-09-02 | Fixed stale row mixing after filtering, numeric sorting for ID columns, and added a Refresh button to the Employees tab. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 
