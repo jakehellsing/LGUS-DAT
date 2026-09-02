@@ -240,6 +240,36 @@ class EmployeeAddDialog(QDialog):
         self.accept()
 
 
+class BulkAssignDepartmentDialog(QDialog):
+    """Modal dialog for assigning multiple employees to a department."""
+
+    def __init__(self, controller: DesktopController, parent=None) -> None:
+        super().__init__(parent)
+        self.controller = controller
+        self.setWindowTitle("Assign to Department")
+        self.setModal(True)
+        self._build_ui()
+
+    def _build_ui(self) -> None:
+        layout = QFormLayout(self)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        self.dept_combo = QComboBox()
+        self.dept_combo.addItem("None", None)
+        for dept in self.controller.registry.all_departments():
+            self.dept_combo.addItem(f"{dept.department_id} - {dept.name}", dept.department_id)
+        layout.addRow("Department:", self.dept_combo)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def selected_department_id(self) -> int | None:
+        return self.dept_combo.currentData()
+
+
 class EmployeesPage(QWidget):
     """Page for managing employees and departments."""
 
@@ -312,6 +342,10 @@ class EmployeesPage(QWidget):
         edit_emp_btn.clicked.connect(self._edit_employee)
         emp_action_controls.addWidget(edit_emp_btn)
 
+        assign_dept_btn = QPushButton("Assign to Department...")
+        assign_dept_btn.clicked.connect(self._bulk_assign_department)
+        emp_action_controls.addWidget(assign_dept_btn)
+
         del_emp_btn = QPushButton("Delete Selected")
         del_emp_btn.clicked.connect(self._delete_employee)
         emp_action_controls.addWidget(del_emp_btn)
@@ -332,8 +366,9 @@ class EmployeesPage(QWidget):
 
         self.emp_table = QTableWidget()
         self.emp_table.setColumnCount(5)
-        self.emp_table.setHorizontalHeaderLabels(["Employee ID", "Name", "Full Name", "Position", "Department ID"])
+        self.emp_table.setHorizontalHeaderLabels(["Employee ID", "Name", "Full Name", "Position", "Department"])
         self.emp_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.emp_table.setSelectionMode(QTableWidget.ExtendedSelection)
         self.emp_table.horizontalHeader().setStretchLastSection(True)
         self.emp_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.emp_table.setSortingEnabled(True)
@@ -566,6 +601,7 @@ class EmployeesPage(QWidget):
 
     def _refresh_employees(self) -> None:
         """Refresh the employee table, sorted and filtered by the current selection."""
+        departments = {dept.department_id: dept for dept in self.controller.registry.all_departments()}
         employees = [emp for emp in self.controller.registry.all_employees() if self._matches_employee_query(emp)]
         sort_by = self.emp_sort_combo.currentText()
 
@@ -582,8 +618,14 @@ class EmployeesPage(QWidget):
             self.emp_table.setItem(row, 1, QTableWidgetItem(emp.name))
             self.emp_table.setItem(row, 2, QTableWidgetItem(emp.full_name or ""))
             self.emp_table.setItem(row, 3, QTableWidgetItem(emp.position or ""))
-            dept = str(emp.department_id) if emp.department_id is not None else ""
-            self.emp_table.setItem(row, 4, NumericTableItem(dept))
+            dept = departments.get(emp.department_id)
+            if dept:
+                dept_text = f"{dept.department_id} - {dept.name}"
+            elif emp.department_id is not None:
+                dept_text = str(emp.department_id)
+            else:
+                dept_text = ""
+            self.emp_table.setItem(row, 4, QTableWidgetItem(dept_text))
 
     def _refresh_departments(self) -> None:
         """Refresh the department table, sorted by the current selection."""
@@ -627,6 +669,28 @@ class EmployeesPage(QWidget):
         dialog = EmployeeEditDialog(self.controller, employee, self)
         dialog.exec()
         self._refresh()
+
+    def _bulk_assign_department(self) -> None:
+        """Assign all selected employees to the chosen department."""
+        selected = self.emp_table.selectedItems()
+        if not selected:
+            QMessageBox.warning(self, "No Selection", "Please select at least one employee to assign.")
+            return
+
+        emp_ids = {self.emp_table.item(item.row(), 0).text() for item in selected}
+
+        dialog = BulkAssignDepartmentDialog(self.controller, self)
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        dept_id = dialog.selected_department_id()
+        count = self.controller.registry.bulk_update_department(list(emp_ids), dept_id)
+        self._refresh()
+        QMessageBox.information(
+            self,
+            "Department Assigned",
+            f"Assigned {count} employee(s) to department.",
+        )
 
     def _clear_employee_filters(self) -> None:
         """Clear all employee filter controls and refresh the table."""

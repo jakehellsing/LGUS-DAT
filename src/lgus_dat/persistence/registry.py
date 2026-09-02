@@ -319,6 +319,23 @@ class AttendanceRegistry:
             )
             conn.commit()
 
+    def bulk_update_department(
+        self,
+        employee_ids: list[str],
+        department_id: int | None,
+    ) -> int:
+        """Update the department assignment for many employees at once."""
+        if not employee_ids:
+            return 0
+        with self._connection() as conn:
+            placeholders = ",".join("?" for _ in employee_ids)
+            result = conn.execute(
+                f"UPDATE employees SET department_id = ? WHERE device_user_id IN ({placeholders})",
+                (department_id, *employee_ids),
+            )
+            conn.commit()
+            return result.rowcount
+
     def import_departments(self, departments: list[Department]) -> int:
         count = 0
         for dept in departments:

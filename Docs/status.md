@@ -4,9 +4,11 @@
 
 ### Current Version
 
-`v0.31.1`
+`v0.32.0`
 
 ### Status
+
+Added bulk department assignment to the PySide6 Employees page: users can select multiple employees (Ctrl/Shift-click) and assign them all to a department, or to no department, in a single action. The Employees table now displays the department as `ID - Name` (e.g. `1 - OFFICE OF THE MUNICIPAL MAYOR`) for readability instead of a raw department ID.
 
 Pre-populated the SQLite registry with **19 municipal departments** and their department heads/positions from the submitted reference documents. The seed uses a `department_seed_version` marker so existing departments are overwritten once on the next app start, while future edits through the UI are preserved across restarts. **14 standard leave/status types** (Civil Service Form No. 6 leave types plus `Fieldwork`) are also pre-populated using the same versioned-seed approach, replacing the previous generic defaults.
 
@@ -93,6 +95,8 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] PyInstaller build for the PySide6 desktop executable
 - [x] Modal employee edit dialog in the PySide6 desktop UI
 - [x] Department dropdown selection for employee assignment in PySide6
+- [x] Bulk department assignment for multiple selected employees in PySide6
+- [x] Department name display (`ID - Name`) in the Employees table
 
 ### In Progress
 
@@ -101,59 +105,51 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 
 ### Version History
 
-| Version | Date | Notes |
-| ------- | ---- | ----- |
-| v0.0.1 | 2026-08-12 | Initial blueprint and project scaffolding added. |
-| v0.1.0 | 2026-08-12 | Python package scaffold with parser, processor, CLI, and tests. |
-| v0.2.0 | 2026-08-12 | Desktop tkinter UI for open/process/save workflow. |
-| v0.3.0 | 2026-08-12 | `user.dat`/`department.dat` importers and SQLite employee registry. |
-| v0.4.0 | 2026-08-12 | Employee/department management editor and binary device-format exporters. |
-| v0.5.0 | 2026-08-12 | Date range selector to filter preview and processed output. |
-| v0.6.0 | 2026-08-12 | Processed `attlog.dat` exporter in NGteco/ZKTeco tab-delimited format. |
-| v0.7.0 | 2026-08-12 | PyInstaller/GitHub Actions build pipeline for Windows `.exe` and Linux binary. |
-| v0.8.0 | 2026-08-12 | Employee search filter for input preview and processed output by ID or name. |
-| v0.9.0 | 2026-08-12 | Manual IN/OUT status editing with `MANUAL_EDIT` flag for corrections. |
-| v0.10.0 | 2026-08-12 | Calendar date picker (`tkcalendar` DateEntry) for date range filter. |
-| v0.11.0 | 2026-08-12 | Local SQLite persistence of imported logs and `Process from DB` for centralized multi-device logs. |
-| v0.12.0 | 2026-08-12 | Search filter and clickable column sorting in employee/department management. |
-| v0.12.1 | 2026-08-12 | Processed `attlog.dat` export preserves the original Device ID padding/width from the source file. |
-| v0.12.2 | 2026-08-12 | Fixed `user.dat` binary export layout to match ZKTeco/NGteco ZK8 72-byte record format and prevent ID/name shifting. |
-| v0.12.3 | 2026-08-12 | Read the string User ID/PIN at byte 48 (not the single-byte UID) and default employee list/export to numeric sort. |
-| v0.12.4 | 2026-08-12 | Added a threaded progress bar for `user.dat`, `department.dat`, and `.DAT` imports so the UI stays responsive while files are parsed and stored. |
-| v0.13.0 | 2026-08-18 | Added full device backup import/export in Employee Management: `user.dat`, `department.dat`, `biotemplate.dat`, and raw `template.fp10*` files. |
-| v0.13.1 | 2026-08-19 | Hardcoded workcode to '1' in `attlog.dat` export for NGTeco software compatibility. Can be reverted if needed - see `src/lgus_dat/output/attlog_writer.py`. |
-| v0.14.0 | 2026-08-20 | Added time selection to date range filter for precise datetime filtering (HH:MM:SS format), color-coded status rows (IN=light blue, OUT=light yellow), and NGTeco-compatible `attlog.dat` export with workcode '1'. |
-| v0.15.0 | 2026-08-25 | Added DTR PDF generation with excel-like monthly attendance reports, duplicate punch handling, 4-punch time slot mapping, dynamic employee/department selection, and month picker for report generation. |
-| v0.16.0 | 2026-08-27 | Completed major UI refactoring to modular component architecture with separated concerns (components, views, dialogs, controller), reduced main app complexity by 38%, and improved maintainability for future UI framework migration. |
-|| v0.17.0 | 2026-08-28 | Added initial PySide6 desktop scaffold and dependency. |
-|| v0.18.0 | 2026-08-28 | Refactored UI to PySide6 with dashboard, import, processed, reports, employees, and settings pages; wired reports and employee management. |
-|| v0.19.0 | 2026-08-28 | Added dashboard KPIs, theme styling, and PyInstaller packaging support. |
-|| v0.20.0 | 2026-08-28 | Implemented month-scoped processing and polished PySide6 UI. |
-|| v0.20.1 | 2026-08-28 | Fixed data persistence by loading stored attendance logs on startup and repaired Processed tab date range picker. |
-|| v0.21.0 | 2026-08-28 | Added progress dialogs, employee full_name, manual status editing, DTR scope selection, and sorting. |
-|| v0.22.0 | 2026-09-01 | Fixed imported attendance data accumulation and added an All Records window for viewing every stored, processed attendance record with search and date filters. |
-|| v0.22.1 | 2026-09-01 | Added a performance benchmark and a progress dialog to the All Records window so loading and processing large registries does not freeze the UI. |
-|| v0.23.0 | 2026-09-01 | Converted employee edit to a modal Save dialog and replaced the Department ID spin box with a department dropdown in the PySide6 UI. |
-||| v0.24.0 | 2026-09-02 | Reworked DTR PDF output to match the reference government form, with title, AM/PM/Undertime/Remarks table, certification, signature block, and two side-by-side copies per page. |
-
-| v0.25.0 | 2026-09-01 | Added master Positions tab with CRUD, employee position dropdown, and position rendered below the name on DTR PDF reports. |
-
-| v0.25.1 | 2026-09-01 | Converted the Employees tab top row into search filters and added a dedicated modal `Add Employee` dialog. |
-
-| v0.25.2 | 2026-09-02 | Fixed stale row mixing after filtering, numeric sorting for ID columns, and added a Refresh button to the Employees tab. |
-|| v0.26.0 | 2026-09-02 | Added department `head_name` field, used it as the DTR PDF Verifying Officer, and exposed head-name editing in the PySide6 and Tkinter department management UIs. |
-
-|| v0.27.0 | 2026-09-02 | Added DTR PDF undertime calculation for Mon-Fri 8:00 AM - 5:00 PM, counting late arrivals and early departures in Hr/Min columns. |
-
-|| v0.28.0 | 2026-09-02 | Added department `head_position` field; DTR signature line now prints head name and position, replacing the generic `Verifying Officer` label. |
-|
-||| v0.29.0 | 2026-09-02 | Added Attendance Filing page with holidays, leave/status types, and per-employee date-range filings; DTR Remarks now prints status labels and `Fieldwork` days have zero undertime. |
-
-|| v0.30.0 | 2026-09-02 | Completed Tkinter-to-PySide6 migration: removed legacy `ui/`, moved shared controller/filters to `core/`, cleaned dead code and build artifacts, aligned CI build with `lgus-dat-desktop-V{VERSION}`, and updated project docs. |
-
-|| v0.31.0 | 2026-09-02 | Pre-populated 19 municipal departments and 14 standard leave/status types using versioned seeds; fixed DTR PDF `Remarks` cell overflow for long leave labels by widening the column, reducing font size, and enabling word-wrap. |
-
-|| v0.31.1 | 2026-09-02 | Updated DTR undertime relation to leave type logic so any filed leave/status type (not only `Fieldwork`) produces zero undertime; updated blueprint and DTR PDF docs accordingly. |
+|| Version | Date | Notes |
+|| ------- | ---- | ----- |
+|| v0.0.1 | 2026-08-12 | Initial blueprint and project scaffolding added. |
+|| v0.1.0 | 2026-08-12 | Python package scaffold with parser, processor, CLI, and tests. |
+|| v0.2.0 | 2026-08-12 | Desktop tkinter UI for open/process/save workflow. |
+|| v0.3.0 | 2026-08-12 | `user.dat`/`department.dat` importers and SQLite employee registry. |
+|| v0.4.0 | 2026-08-12 | Employee/department management editor and binary device-format exporters. |
+|| v0.5.0 | 2026-08-12 | Date range selector to filter preview and processed output. |
+|| v0.6.0 | 2026-08-12 | Processed `attlog.dat` exporter in NGteco/ZKTeco tab-delimited format. |
+|| v0.7.0 | 2026-08-12 | PyInstaller/GitHub Actions build pipeline for Windows `.exe` and Linux binary. |
+|| v0.8.0 | 2026-08-12 | Employee search filter for input preview and processed output by ID or name. |
+|| v0.9.0 | 2026-08-12 | Manual IN/OUT status editing with `MANUAL_EDIT` flag for corrections. |
+|| v0.10.0 | 2026-08-12 | Calendar date picker (`tkcalendar` DateEntry) for date range filter. |
+|| v0.11.0 | 2026-08-12 | Local SQLite persistence of logs and `Process from DB` for centralized multi-device logs. |
+|| v0.12.0 | 2026-08-12 | Search filter and clickable column sorting in employee/department management. |
+|| v0.12.1 | 2026-08-12 | Processed `attlog.dat` export preserves the original Device ID padding/width from the source file. |
+|| v0.12.2 | 2026-08-12 | Fixed `user.dat` binary export layout to match ZKTeco/NGteco ZK8 72-byte record format and prevent ID/name shifting. |
+|| v0.12.3 | 2026-08-12 | Read the string User ID/PIN at byte 48 (not the single-byte UID) and default employee list/export to numeric sort. |
+|| v0.12.4 | 2026-08-12 | Added a threaded progress bar for `user.dat`, `department.dat`, and `.DAT` imports so the UI stays responsive while files are parsed and stored. |
+|| v0.13.0 | 2026-08-18 | Added full device backup import/export in Employee Management: `user.dat`, `department.dat`, `biotemplate.dat`, and raw `template.fp10*` files. |
+|| v0.13.1 | 2026-08-19 | Hardcoded workcode to '1' in `attlog.dat` export for NGTeco software compatibility. Can be reverted if needed - see `src/lgus_dat/output/attlog_writer.py`. |
+|| v0.14.0 | 2026-08-20 | Added time selection to date range filter for precise datetime filtering (HH:MM:SS format), color-coded status rows (IN=light blue, OUT=light yellow), and NGTeco-compatible `attlog.dat` export with workcode '1'. |
+|| v0.15.0 | 2026-08-25 | Added DTR PDF generation with excel-like monthly attendance reports, duplicate punch handling, 4-punch time slot mapping, dynamic employee/department selection, and month picker for report generation. |
+|| v0.16.0 | 2026-08-27 | Completed major UI refactoring to modular component architecture with separated concerns (components, views, dialogs, controller), reduced main app complexity by 38%, and improved maintainability for future UI framework migration. |
+||| v0.17.0 | 2026-08-28 | Added initial PySide6 desktop scaffold and dependency. |
+||| v0.18.0 | 2026-08-28 | Refactored UI to PySide6 with dashboard, import, processed, reports, employees, and settings pages; wired reports and employee management. |
+||| v0.19.0 | 2026-08-28 | Added dashboard KPIs, theme styling, and PyInstaller packaging support. |
+||| v0.20.0 | 2026-08-28 | Implemented month-scoped processing and polished PySide6 UI. |
+||| v0.20.1 | 2026-08-28 | Fixed data persistence by loading stored attendance logs on startup and repaired Processed tab date range picker. |
+||| v0.21.0 | 2026-08-28 | Added progress dialogs, employee full_name, manual status editing, DTR scope selection, and sorting. |
+||| v0.22.0 | 2026-09-01 | Fixed imported attendance data accumulation and added an All Records window for viewing every stored, processed attendance record with search and date filters. |
+||| v0.22.1 | 2026-09-01 | Added a performance benchmark and a progress dialog to the All Records window so loading and processing large registries does not freeze the UI. |
+||| v0.23.0 | 2026-09-01 | Converted employee edit to a modal Save dialog and replaced the Department ID spin box with a department dropdown in the PySide6 UI. |
+|||| v0.24.0 | 2026-09-02 | Reworked DTR PDF output to match the reference government form, with title, AM/PM/Undertime/Remarks table, certification, signature block, and two side-by-side copies per page. |
+|| v0.25.0 | 2026-09-01 | Added master Positions tab with CRUD, employee position dropdown, and position rendered below the name on DTR PDF reports. |
+|| v0.25.1 | 2026-09-01 | Converted the Employees tab top row into search filters and added a dedicated modal `Add Employee` dialog. |
+|| v0.25.2 | 2026-09-02 | Fixed stale row mixing after filtering, numeric sorting for ID columns, and added a Refresh button to the Employees tab. |
+||| v0.26.0 | 2026-09-02 | Added department `head_name` field, used it as the DTR PDF Verifying Officer, and exposed head-name editing in the PySide6 and Tkinter department management UIs. |
+||| v0.27.0 | 2026-09-02 | Added DTR PDF undertime calculation for Mon-Fri 8:00 AM - 5:00 PM, counting late arrivals and early departures in Hr/Min columns. |
+||| v0.28.0 | 2026-09-02 | Added department `head_position` field; DTR signature line now prints head name and position, replacing the generic `Verifying Officer` label. |
+|||| v0.29.0 | 2026-09-02 | Added Attendance Filing page with holidays, leave/status types, and per-employee date-range filings; DTR Remarks now prints status labels and `Fieldwork` days have zero undertime. |
+||| v0.30.0 | 2026-09-02 | Completed Tkinter-to-PySide6 migration: removed legacy `ui/`, moved shared controller/filters to `core/`, cleaned dead code and build artifacts, aligned CI build with `lgus-dat-desktop-V{VERSION}`, and updated project docs. |
+||| v0.31.0 | 2026-09-02 | Pre-populated 19 municipal departments and 14 standard leave/status types using versioned seeds; fixed DTR PDF `Remarks` cell overflow for long leave labels by widening the column, reducing font size, and enabling word-wrap. |
+||| v0.31.1 | 2026-09-02 | Updated DTR undertime relation to leave type logic so any filed leave/status type (not only `Fieldwork`) produces zero undertime; updated blueprint and DTR PDF docs accordingly. |
+||| v0.32.0 | 2026-09-02 | Added bulk department assignment for multiple selected employees and department `ID - Name` display in the PySide6 Employees page. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 
