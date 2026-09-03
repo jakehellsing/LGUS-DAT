@@ -4,11 +4,13 @@
 
 ### Current Version
 
-`v0.32.0`
+`v0.32.1`
 
 ### Status
 
 Added bulk department assignment to the PySide6 Employees page: users can select multiple employees (Ctrl/Shift-click) and assign them all to a department, or to no department, in a single action. The Employees table now displays the department as `ID - Name` (e.g. `1 - OFFICE OF THE MUNICIPAL MAYOR`) for readability instead of a raw department ID.
+
+Improved Employees and Departments table column sizing: the ID columns now resize to their contents, while the remaining columns stretch. The department name column is prioritized with a larger initial share, so long department names are less likely to be truncated.
 
 Pre-populated the SQLite registry with **19 municipal departments** and their department heads/positions from the submitted reference documents. The seed uses a `department_seed_version` marker so existing departments are overwritten once on the next app start, while future edits through the UI are preserved across restarts. **14 standard leave/status types** (Civil Service Form No. 6 leave types plus `Fieldwork`) are also pre-populated using the same versioned-seed approach, replacing the previous generic defaults.
 
@@ -150,6 +152,8 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 ||| v0.31.0 | 2026-09-02 | Pre-populated 19 municipal departments and 14 standard leave/status types using versioned seeds; fixed DTR PDF `Remarks` cell overflow for long leave labels by widening the column, reducing font size, and enabling word-wrap. |
 ||| v0.31.1 | 2026-09-02 | Updated DTR undertime relation to leave type logic so any filed leave/status type (not only `Fieldwork`) produces zero undertime; updated blueprint and DTR PDF docs accordingly. |
 ||| v0.32.0 | 2026-09-02 | Added bulk department assignment for multiple selected employees and department `ID - Name` display in the PySide6 Employees page. |
+
+||| v0.32.1 | 2026-09-03 | Improved Employees and Departments table column sizing so long department names are more visible. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 
