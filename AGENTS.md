@@ -14,3 +14,4 @@ Do not create branches. Use tags for checkpoints and releases instead.
 - When building the PySide6 desktop executable with PyInstaller, name the output file using the current version tag: `lgus-dat-desktop-V{VERSION}.exe` (Windows) or `lgus-dat-desktop-V{VERSION}` (Linux).
 - Example for version `0.21.0`: `lgus-dat-desktop-V0.21.0.exe`.
 - Always update `pyproject.toml` and `Docs/status.md` to the same version before building a release executable.
+- Before starting any build, ask the user whether to build the **full application installer** or **only the patcher** for the current version.
