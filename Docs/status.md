@@ -4,7 +4,7 @@
 
 ### Current Version
 
-`v0.33.0`
+`v1.0.0`
 
 ### Status
 
@@ -153,6 +153,7 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 ||| v0.32.0 | 2026-09-02 | Added bulk department assignment for multiple selected employees and department `ID - Name` display in the PySide6 Employees page. |
 
 ||| v0.33.0 | 2026-09-04 | Added Daily DTR Review page with employee list, DTR preview, punch editing, manual DTR slot overrides, SQLite persistence, simplified punch table, and month dropdown. |
+||| v1.0.0 | 2026-09-04 | Official V1.0 release for real-world HR use. |
 ||| v0.32.1 | 2026-09-03 | Improved Employees and Departments table column sizing so long department names are more visible. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
