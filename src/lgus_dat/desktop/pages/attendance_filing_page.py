@@ -34,7 +34,7 @@ class AttendanceFilingPage(QWidget):
         super().__init__(parent)
         self.controller = controller
         self._build_ui()
-        self._refresh()
+        self.refresh()
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -97,6 +97,7 @@ class AttendanceFilingPage(QWidget):
         self.holidays_table.setColumnCount(2)
         self.holidays_table.setHorizontalHeaderLabels(["Date", "Name"])
         self.holidays_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.holidays_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.holidays_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.holidays_table.setSortingEnabled(True)
         layout.addWidget(self.holidays_table)
@@ -169,6 +170,7 @@ class AttendanceFilingPage(QWidget):
         self.leave_types_table.setColumnCount(1)
         self.leave_types_table.setHorizontalHeaderLabels(["Leave / Status Type"])
         self.leave_types_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.leave_types_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.leave_types_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.leave_types_table.setSortingEnabled(True)
         layout.addWidget(self.leave_types_table)
@@ -228,58 +230,79 @@ class AttendanceFilingPage(QWidget):
     def _build_filings_tab(self) -> None:
         layout = QVBoxLayout(self.filings_tab)
 
-        controls = QHBoxLayout()
-        controls.setSpacing(12)
+        controls = QVBoxLayout()
+        controls.setSpacing(8)
 
-        controls.addWidget(QLabel("Employee:"))
+        top = QHBoxLayout()
+        top.setSpacing(12)
+
+        self.employee_filter = QLineEdit()
+        self.employee_filter.setPlaceholderText("Filter employees...")
+        self.employee_filter.setMinimumWidth(160)
+        self.employee_filter.textChanged.connect(self._refresh_employee_combo)
+        top.addWidget(self.employee_filter)
+
+        top.addWidget(QLabel("Employee:"))
         self.employee_combo = QComboBox()
         self.employee_combo.setMinimumWidth(220)
-        controls.addWidget(self.employee_combo)
+        top.addWidget(self.employee_combo)
+        top.addStretch()
+        controls.addLayout(top)
 
-        controls.addWidget(QLabel("Start:"))
+        bottom = QHBoxLayout()
+        bottom.setSpacing(12)
+
+        bottom.addWidget(QLabel("Start:"))
         self.start_date = QDateEdit()
         self.start_date.setCalendarPopup(True)
         self.start_date.setDisplayFormat("yyyy-MM-dd")
         self.start_date.setDate(QDate.currentDate())
-        controls.addWidget(self.start_date)
+        bottom.addWidget(self.start_date)
 
-        controls.addWidget(QLabel("End:"))
+        bottom.addWidget(QLabel("End:"))
         self.end_date = QDateEdit()
         self.end_date.setCalendarPopup(True)
         self.end_date.setDisplayFormat("yyyy-MM-dd")
         self.end_date.setDate(QDate.currentDate())
-        controls.addWidget(self.end_date)
+        bottom.addWidget(self.end_date)
 
-        controls.addWidget(QLabel("Status:"))
+        bottom.addWidget(QLabel("Status:"))
         self.status_combo = QComboBox()
         self.status_combo.setMinimumWidth(140)
-        controls.addWidget(self.status_combo)
+        bottom.addWidget(self.status_combo)
 
         add_filing_btn = QPushButton("File")
         add_filing_btn.clicked.connect(self._add_filing)
-        controls.addWidget(add_filing_btn)
+        bottom.addWidget(add_filing_btn)
 
         del_filing_btn = QPushButton("Delete Selected")
         del_filing_btn.clicked.connect(self._delete_filing)
-        controls.addWidget(del_filing_btn)
+        bottom.addWidget(del_filing_btn)
 
-        controls.addStretch()
+        bottom.addStretch()
+        controls.addLayout(bottom)
+
         layout.addLayout(controls)
 
         self.filings_table = QTableWidget()
         self.filings_table.setColumnCount(6)
         self.filings_table.setHorizontalHeaderLabels(["Employee ID", "Employee Name", "Start", "End", "Status", "Filing ID"])
         self.filings_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.filings_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.filings_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.filings_table.setColumnHidden(5, True)
         self.filings_table.setSortingEnabled(True)
         layout.addWidget(self.filings_table)
 
     def _refresh_employee_combo(self) -> None:
+        filter_text = self.employee_filter.text().strip().lower()
         current = self.employee_combo.currentData()
         self.employee_combo.clear()
         for emp in self.controller.registry.all_employees():
-            self.employee_combo.addItem(f"{emp.device_user_id} - {emp.name}", emp.device_user_id)
+            display = f"{emp.device_user_id} - {emp.name}"
+            if filter_text and filter_text not in display.lower():
+                continue
+            self.employee_combo.addItem(display, emp.device_user_id)
 
         for i in range(self.employee_combo.count()):
             if self.employee_combo.itemData(i) == current:
@@ -362,7 +385,8 @@ class AttendanceFilingPage(QWidget):
     # Page refresh
     # ------------------------------------------------------------------
 
-    def _refresh(self) -> None:
+    def refresh(self) -> None:
+        """Refresh all tables and combo boxes from the registry."""
         self._refresh_holidays()
         self._refresh_leave_types()
         self._refresh_employee_combo()

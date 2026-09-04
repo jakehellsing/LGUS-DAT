@@ -26,6 +26,7 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
 ### Data Processing
 - **Holiday and leave status remarks**: System-wide holidays and per-employee filed status ranges are looked up for the report month. When present, the DTR `Remarks` cell prints the holiday name and/or status label instead of the weekday; both may be combined with ` / `.
 - **Leave/status undertime**: A day filed with any leave/status type (e.g. `Fieldwork`, `Sick Leave`, `Vacation Leave`) has zero undertime, regardless of the recorded punches.
+- **Holiday undertime**: A system-wide holiday has zero undertime, regardless of the recorded punches.
 - **Duplicate handling**: When duplicate punches with the same employee_id, date, and timestamp are found, only the first occurrence is used
 - **4-punch mapping**: The first 4 punches per day are mapped to the 4 time slots:
   - 1st punch → AM Arrival
@@ -39,6 +40,7 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
   - 5:00 PM afternoon departure
   - Late arrival, early lunch out, late lunch in, and early departure are all counted in whole minutes
   - A weekday with no punches at all = 8 hours undertime
+  - System-wide holidays are excluded from undertime
   - Saturdays and Sundays are excluded
 - **Incomplete records**: Days with fewer than 4 punches show blank cells for missing time slots (marked for investigation)
 - **Extra punches**: Only the first 4 punches are used; additional punches are ignored

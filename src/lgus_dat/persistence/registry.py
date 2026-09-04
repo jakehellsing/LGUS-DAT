@@ -171,6 +171,17 @@ class AttendanceRegistry:
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS dtr_slot_overrides (
+                    employee_id TEXT NOT NULL,
+                    override_date TEXT NOT NULL,
+                    slot TEXT NOT NULL,
+                    punch_time TEXT NOT NULL,
+                    PRIMARY KEY (employee_id, override_date, slot),
+                    FOREIGN KEY (employee_id) REFERENCES employees (device_user_id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_dtr_overrides_employee ON dtr_slot_overrides (employee_id);
                 """
             )
             # Migrate older registries that may be missing the raw_record columns.
@@ -805,3 +816,48 @@ class AttendanceRegistry:
                 result.setdefault(current.day, []).append(status)
                 current += timedelta(days=1)
         return result
+
+    def save_dtr_overrides_for_employee(
+        self,
+        employee_id: str,
+        overrides: dict[date, dict[str, str]],
+    ) -> None:
+        """Persist DTR slot overrides for a given employee."""
+        with self._connection() as conn:
+            conn.execute(
+                "DELETE FROM dtr_slot_overrides WHERE employee_id = ?",
+                (employee_id,),
+            )
+            for override_date, slots in overrides.items():
+                for slot, punch_time in slots.items():
+                    conn.execute(
+                        """
+                        INSERT OR REPLACE INTO dtr_slot_overrides
+                        (employee_id, override_date, slot, punch_time)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (employee_id, override_date.isoformat(), slot, punch_time),
+                    )
+            conn.commit()
+
+    def get_dtr_overrides(self) -> dict[str, dict[date, dict[str, str]]]:
+        """Return all stored DTR slot overrides keyed by employee and date."""
+        with self._connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT employee_id, override_date, slot, punch_time
+                FROM dtr_slot_overrides
+                ORDER BY employee_id, override_date, slot
+                """
+            ).fetchall()
+
+        overrides: dict[str, dict[date, dict[str, str]]] = {}
+        for row in rows:
+            emp_id = row["employee_id"]
+            override_date = date.fromisoformat(row["override_date"])
+            slot = row["slot"]
+            punch_time = row["punch_time"]
+            employee_overrides = overrides.setdefault(emp_id, {})
+            day_overrides = employee_overrides.setdefault(override_date, {})
+            day_overrides[slot] = punch_time
+        return overrides

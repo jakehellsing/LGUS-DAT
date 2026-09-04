@@ -108,6 +108,42 @@ def test_parse_dat_file(tmp_path) -> None:
     assert records[0].timestamp.strftime("%Y-%m-%d %H:%M:%S") == "2026-08-12 08:03:27"
 
 
+def test_duplicate_timestamps_share_first_status() -> None:
+    records = [
+        _make_record("1001", "2026-08-12 08:00:00"),
+        _make_record("1001", "2026-08-12 12:00:00"),
+        _make_record("1001", "2026-08-12 12:00:00"),
+        _make_record("1001", "2026-08-12 13:00:00"),
+        _make_record("1001", "2026-08-12 13:00:00"),
+        _make_record("1001", "2026-08-12 13:00:00"),
+    ]
+    processed = process_records(records)
+    assert [r.status for r in processed] == [
+        PunchStatus.IN,   # 08:00
+        PunchStatus.OUT,  # 12:00
+        PunchStatus.OUT,  # duplicate of 12:00
+        PunchStatus.IN,   # 13:00
+        PunchStatus.IN,   # duplicate of 13:00
+        PunchStatus.IN,   # duplicate of 13:00
+    ]
+
+
+def test_duplicate_timestamps_count_as_one_for_unpaired() -> None:
+    records = [
+        _make_record("1001", "2026-08-12 08:00:00"),
+        _make_record("1001", "2026-08-12 12:00:00"),
+        _make_record("1001", "2026-08-12 12:00:00"),
+        _make_record("1001", "2026-08-12 13:00:00"),
+    ]
+    processed = process_records(records)
+    assert len(processed) == 4
+    # 3 distinct timestamps: the final group is IN and unpaired
+    for rec in processed:
+        if rec.timestamp.strftime("%H:%M:%S") == "13:00:00":
+            assert rec.status == PunchStatus.IN
+            assert rec.exception_flag == "UNPAIRED_FINAL_IN"
+
+
 def _group_by_employee(records):
     from collections import defaultdict
     groups = defaultdict(list)

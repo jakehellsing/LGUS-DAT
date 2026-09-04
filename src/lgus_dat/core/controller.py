@@ -30,6 +30,7 @@ class UIState:
     filter_start: Optional[datetime] = None
     filter_end: Optional[datetime] = None
     search_query: str = ""
+    dtr_overrides: dict[str, dict[date, dict[str, str]]] = field(default_factory=dict)
 
 
 class UIController:
@@ -38,6 +39,7 @@ class UIController:
     def __init__(self, registry: AttendanceRegistry) -> None:
         self.registry = registry
         self.state = UIState()
+        self.state.dtr_overrides = self.registry.get_dtr_overrides()
 
     def load_file(self, path: Path) -> tuple[Path, list[ParsedRecord], list[Any], int]:
         """Load and parse a .DAT file.
@@ -339,6 +341,7 @@ class UIController:
             department_head_positions=department_head_positions,
             month_holidays=holidays,
             employee_status=employee_status,
+            dtr_overrides=self.state.dtr_overrides,
         )
         
         return str(path), len(filtered_records)
@@ -416,3 +419,45 @@ class UIController:
     def get_employee_name(self, employee_id: str) -> Optional[str]:
         """Get employee name by ID."""
         return self.registry.employee_name(employee_id)
+
+    def set_dtr_override(
+        self,
+        employee_id: str,
+        punch_date: date,
+        slot: str,
+        punch_time: str,
+    ) -> None:
+        """Store a DTR time-slot override for a given employee and day."""
+        employee_overrides = self.state.dtr_overrides.setdefault(employee_id, {})
+        day_overrides = employee_overrides.setdefault(punch_date, {})
+        day_overrides[slot] = punch_time
+
+    def clear_dtr_override(
+        self,
+        employee_id: str,
+        punch_date: date,
+        slot: str,
+    ) -> None:
+        """Clear a DTR time-slot override."""
+        employee_overrides = self.state.dtr_overrides.get(employee_id)
+        if not employee_overrides:
+            return
+
+        day_overrides = employee_overrides.get(punch_date)
+        if not day_overrides:
+            return
+
+        day_overrides.pop(slot, None)
+        if not day_overrides:
+            employee_overrides.pop(punch_date)
+        if not employee_overrides:
+            self.state.dtr_overrides.pop(employee_id)
+
+    def get_dtr_overrides_for_employee(self, employee_id: str) -> dict[date, dict[str, str]]:
+        """Get DTR time-slot overrides for a given employee."""
+        return self.state.dtr_overrides.get(employee_id, {})
+
+    def save_dtr_overrides_for_employee(self, employee_id: str) -> None:
+        """Persist the in-memory DTR overrides for a given employee."""
+        overrides = self.state.dtr_overrides.get(employee_id, {})
+        self.registry.save_dtr_overrides_for_employee(employee_id, overrides)

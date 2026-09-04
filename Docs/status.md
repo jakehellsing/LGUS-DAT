@@ -4,23 +4,17 @@
 
 ### Current Version
 
-`v0.32.1`
+`v0.33.0`
 
 ### Status
 
-Added bulk department assignment to the PySide6 Employees page: users can select multiple employees (Ctrl/Shift-click) and assign them all to a department, or to no department, in a single action. The Employees table now displays the department as `ID - Name` (e.g. `1 - OFFICE OF THE MUNICIPAL MAYOR`) for readability instead of a raw department ID.
-
-Improved Employees and Departments table column sizing: the ID columns now resize to their contents, while the remaining columns stretch. The department name column is prioritized with a larger initial share, so long department names are less likely to be truncated.
-
-Pre-populated the SQLite registry with **19 municipal departments** and their department heads/positions from the submitted reference documents. The seed uses a `department_seed_version` marker so existing departments are overwritten once on the next app start, while future edits through the UI are preserved across restarts. **14 standard leave/status types** (Civil Service Form No. 6 leave types plus `Fieldwork`) are also pre-populated using the same versioned-seed approach, replacing the previous generic defaults.
-
-Fixed DTR PDF `Remarks` cell text overflow: the column is wider, the font is smaller, and all remark cells are now `Paragraph` objects that wrap at word boundaries instead of squeezing or clipping long leave names such as `Special Privilege Leave` and `Special Leave Benefits for Women`.
+Added a **Daily DTR Review** page to the PySide6 desktop UI: it shows an employee list, a DTR-style month preview, and a daily punch editor. The punch editor lets users change a punch's `IN`/`OUT` status and manually override the DTR time slots (`AM OUT`, `PM IN`, `PM OUT`) without altering the underlying sequence logic. Overrides are applied to the DTR preview and to generated DTR PDFs, and can be saved to the SQLite registry via a **Save Overrides** button so they persist across sessions. The punch table now shows only **Time** and **Status**, and the month selector is a dropdown of `yyyy-MM` values instead of a calendar popup.
 
 Added an **Attendance Filing** page to the PySide6 desktop UI with three tabs: **Holidays** for system-wide holiday dates, **Leave Types** for a master status list, and **File Leave/Status** for per-employee date-range filings. The DTR PDF now looks up these holidays and filings when generating the monthly report and prints the status label(s) in the `Remarks` column; when both a holiday and an employee filing apply, the labels are combined. If no holiday or filing exists for a day, the column still shows the weekday abbreviation.
 
 Added `head_position` to the `Department` model. The DTR PDF signature line now prints the department head name and position, replacing the generic `Verifying Officer` label. The PySide6 Employees page includes a `Head Position` field. The head name and position are stored in the local SQLite registry and do not affect the binary `department.dat` import/export.
 
-The DTR PDF now calculates daily undertime for Monday-Friday workdays against the official 8:00 AM - 5:00 PM schedule. Late arrivals after 8:00 AM and early departures before 5:00 PM are counted in whole minutes and shown in the Undertime Hr/Min columns. Weekends are excluded, two-punch days use the final departure as the end time, and any day with a filed leave/status has zero undertime.
+The DTR PDF now calculates daily undertime for Monday-Friday workdays against the official 8:00 AM - 5:00 PM schedule. Late arrivals after 8:00 AM and early departures before 5:00 PM are counted in whole minutes and shown in the Undertime Hr/Min columns. Weekends are excluded, two-punch days use the final departure as the end time, and any day with a filed leave/status or system-wide holiday has zero undertime.
 
 Added a `head_name` field to the `Department` model and registry. The DTR PDF "Verifying Officer" signature line is now derived from the employee's department head name. The PySide6 Employees page allows viewing and editing the department head name. The binary `department.dat` importer/exporter is unchanged because the device format does not carry head metadata; the value is stored in the local SQLite registry only.
 
@@ -98,6 +92,11 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] Modal employee edit dialog in the PySide6 desktop UI
 - [x] Department dropdown selection for employee assignment in PySide6
 - [x] Bulk department assignment for multiple selected employees in PySide6
+- [x] Daily DTR Review page with employee list, DTR preview, and daily punch editor in PySide6
+- [x] Manual DTR time-slot overrides (`AM OUT`, `PM IN`, `PM OUT`) in the Daily DTR Review page
+- [x] Persistence of DTR slot overrides to the SQLite registry with a Save Overrides button
+- [x] Simplified punch table showing only Time and Status in the Daily DTR Review page
+- [x] Month selector dropdown (`yyyy-MM`) for the Daily DTR Review page
 - [x] Department name display (`ID - Name`) in the Employees table
 
 ### In Progress
@@ -153,6 +152,7 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 ||| v0.31.1 | 2026-09-02 | Updated DTR undertime relation to leave type logic so any filed leave/status type (not only `Fieldwork`) produces zero undertime; updated blueprint and DTR PDF docs accordingly. |
 ||| v0.32.0 | 2026-09-02 | Added bulk department assignment for multiple selected employees and department `ID - Name` display in the PySide6 Employees page. |
 
+||| v0.33.0 | 2026-09-04 | Added Daily DTR Review page with employee list, DTR preview, punch editing, manual DTR slot overrides, SQLite persistence, simplified punch table, and month dropdown. |
 ||| v0.32.1 | 2026-09-03 | Improved Employees and Departments table column sizing so long department names are more visible. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

@@ -230,6 +230,18 @@ legitimate raw events.
 -   Report exact duplicates separately.
 -   Make duplicate handling configurable in a later version.
 
+### Duplicate punch status assignment
+
+For the purpose of assigning `IN`/`OUT` status, consecutive records that
+share the exact same timestamp are treated as a single punch event. All
+records in such a group receive the status that the first record in the
+group would have received under the normal alternating sequence. The
+sequence then continues with the next distinct timestamp as if the group
+consumed one punch position.
+
+This preserves all source records while preventing the same physical
+verification from being alternated `IN` / `OUT` / `IN` / `OUT`.
+
 ------------------------------------------------------------------------
 
 ## 8. Odd Number of Daily Punches
@@ -622,11 +634,12 @@ weekday workdays against the government DTR schedule.
     **Undertime Min** columns of the DTR.
 -   At the bottom of the DTR, a **TOTAL =** row sums the **Hr** and **Min**
     columns separately and displays the monthly totals.
+-   A **system-wide holiday** has no undertime.
 
 ### Notes
 
--   This is a fixed, deterministic rule and does not include grace periods,
-    shift schedules, or holidays.
+-   This is a fixed, deterministic rule and does not include grace periods
+    or shift schedules.
 -   Weekends (Saturdays and Sundays) show no undertime.
 
 ------------------------------------------------------------------------
@@ -891,3 +904,16 @@ configure attendance statuses that modify the DTR `Remarks` column.
     slots.
 -   A day filed with any leave/status type has no undertime calculated,
     regardless of the biometric punches recorded.
+
+### DTR Manual Slot Overrides
+
+-   The DTR preview and PDF generation map raw punches to the `in_am`, `out_am`,
+    `in_pm`, and `out_pm` time slots using the default four-punch rule.
+-   The **Daily DTR Review** page allows the user to manually override any of
+    these four slots for a selected employee and date.
+-   The override stores the selected punch time for the slot without changing
+    the underlying `IN`/`OUT` status assignment.
+-   Overrides are persisted in the `dtr_slot_overrides` table and are applied
+    when generating the DTR preview or PDF.
+-   If an override is cleared or the slot is empty, the default four-punch
+    mapping is used for that slot.

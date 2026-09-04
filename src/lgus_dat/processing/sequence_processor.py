@@ -48,25 +48,36 @@ def process_records(
     for key in sorted(groups):
         employee_id, punch_date = key
         sorted_records = sort_group(groups[key])
-        unpaired = len(sorted_records) % 2 == 1
 
-        for index, raw in enumerate(sorted_records):
-            status = assign_status(index)
+        # Consecutive records with the exact same timestamp are treated as one
+        # punch event for IN/OUT status assignment.
+        blocks: list[list[ParsedRecord]] = []
+        for raw in sorted_records:
+            if blocks and raw.timestamp == blocks[-1][0].timestamp:
+                blocks[-1].append(raw)
+            else:
+                blocks.append([raw])
+
+        unpaired = len(blocks) % 2 == 1
+
+        for block_index, block in enumerate(blocks):
+            status = assign_status(block_index)
             exception: Optional[str] = None
-            if unpaired and index == len(sorted_records) - 1 and status == PunchStatus.IN:
+            if unpaired and block_index == len(blocks) - 1 and status == PunchStatus.IN:
                 exception = "UNPAIRED_FINAL_IN"
 
-            results.append(
-                AttendanceRecord(
-                    employee_id=employee_id,
-                    punch_date=punch_date,
-                    punch_time=raw.timestamp.strftime("%H:%M:%S"),
-                    timestamp=raw.timestamp,
-                    status=status,
-                    original_record=raw.original_line,
-                    exception_flag=exception,
-                    employee_name=name_lookup(employee_id) if name_lookup else None,
+            for raw in block:
+                results.append(
+                    AttendanceRecord(
+                        employee_id=employee_id,
+                        punch_date=punch_date,
+                        punch_time=raw.timestamp.strftime("%H:%M:%S"),
+                        timestamp=raw.timestamp,
+                        status=status,
+                        original_record=raw.original_line,
+                        exception_flag=exception,
+                        employee_name=name_lookup(employee_id) if name_lookup else None,
+                    )
                 )
-            )
 
     return results

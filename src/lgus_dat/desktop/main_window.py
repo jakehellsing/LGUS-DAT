@@ -18,6 +18,7 @@ from lgus_dat.desktop.all_records_window import AllRecordsWindow
 from lgus_dat.desktop.desktop_controller import DesktopController
 from lgus_dat.desktop.pages.attendance_filing_page import AttendanceFilingPage
 from lgus_dat.desktop.pages.dashboard_page import DashboardPage
+from lgus_dat.desktop.pages.dtr_review_page import DailyDTRReviewPage
 from lgus_dat.desktop.pages.employees_page import EmployeesPage
 from lgus_dat.desktop.pages.import_page import ImportPage
 from lgus_dat.desktop.pages.processed_page import ProcessedPage
@@ -60,6 +61,7 @@ class MainWindow(QMainWindow):
         self.import_page.process_requested.connect(self._on_process_requested)
 
         self.filing_page = AttendanceFilingPage(self.controller)
+        self.daily_page = DailyDTRReviewPage(self.controller)
 
         self.pages: dict[str, QWidget] = {
             "Dashboard": self.dashboard_page,
@@ -68,6 +70,7 @@ class MainWindow(QMainWindow):
             "Reports": ReportsPage(self.controller),
             "Employees": EmployeesPage(self.controller),
             "Filing": self.filing_page,
+            "Daily": self.daily_page,
             "Settings": SettingsPage(),
         }
         for page in self.pages.values():
@@ -104,7 +107,7 @@ class MainWindow(QMainWindow):
         sidebar_layout.addSpacing(24)
 
         self.nav_buttons: list[QPushButton] = []
-        for name in ["Dashboard", "Import", "Processed", "Reports", "Employees", "Filing", "Settings"]:
+        for name in ["Dashboard", "Import", "Processed", "Reports", "Employees", "Filing", "Daily", "Settings"]:
             btn = QPushButton(name)
             btn.setCheckable(True)
             btn.setAutoExclusive(True)
@@ -133,6 +136,10 @@ class MainWindow(QMainWindow):
                 btn.setChecked(True)
         if name == "Dashboard":
             self.dashboard_page.refresh()
+        elif name == "Filing":
+            self.filing_page.refresh()
+        elif name == "Daily":
+            self.daily_page.refresh()
         self.statusBar().showMessage(f"Viewing {name}")
 
     def _on_process_requested(self) -> None:

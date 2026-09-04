@@ -67,40 +67,49 @@ def _remove_duplicate_punches(records: list[AttendanceRecord]) -> list[Attendanc
 def _map_punches_to_daily_slots(
     records: list[AttendanceRecord],
     target_month: date,
+    overrides: dict[date, dict[str, str]] | None = None,
 ) -> dict[int, DailyPunches]:
     """Map attendance records to daily time slots for a given month.
-    
+
     Args:
         records: List of attendance records for one employee
         target_month: The month to generate the report for (day will be ignored)
-    
+        overrides: Optional mapping of date -> DTR slot -> time string
+
     Returns:
         Dictionary mapping day number (1-31) to DailyPunches data
     """
     # Filter records for the target month
     month_records = [
-        r for r in records 
-        if r.punch_date.year == target_month.year 
+        r for r in records
+        if r.punch_date.year == target_month.year
         and r.punch_date.month == target_month.month
     ]
-    
+
     # Remove duplicates
     month_records = _remove_duplicate_punches(month_records)
-    
+
     # Group by day and sort by timestamp
     daily_records: dict[int, list[AttendanceRecord]] = defaultdict(list)
     for record in month_records:
         daily_records[record.punch_date.day].append(record)
-    
+
     # Sort records within each day by timestamp
     for day in daily_records:
         daily_records[day].sort(key=lambda r: r.timestamp)
-    
+
+    # Normalize overrides to day-of-month keys for the target month
+    employee_overrides: dict[int, dict[str, str]] = {}
+    if overrides:
+        for punch_date, day_overrides in overrides.items():
+            if punch_date.year == target_month.year and punch_date.month == target_month.month:
+                employee_overrides[punch_date.day] = day_overrides
+
     # Map to the 4 time slots
     daily_punches: dict[int, DailyPunches] = {}
     for day, day_records in daily_records.items():
         punches = DailyPunches(day=day)
-        
+
         # Map first 4 punches to slots (if available)
         for i, record in enumerate(day_records[:4]):
             time_str = record.punch_time  # HH:MM:SS format
@@ -112,9 +121,14 @@ def _map_punches_to_daily_slots(
                 punches.in_pm = time_str
             elif i == 3:
                 punches.out_pm = time_str
-        
+
+        # Apply optional DTR slot overrides
+        for slot, time_str in employee_overrides.get(day, {}).items():
+            if time_str:
+                setattr(punches, slot, time_str)
+
         daily_punches[day] = punches
-    
+
     return daily_punches
 
 
@@ -196,6 +210,7 @@ def _calculate_undertime(
     day: int,
     punches: DailyPunches,
     status_labels: list[str] | None = None,
+    holidays_by_day: dict[int, str] | None = None,
 ) -> tuple[int, int]:
     """Calculate daily undertime in minutes against the government DTR schedule.
 
@@ -213,8 +228,12 @@ def _calculate_undertime(
     - Late lunch in after 1:00 PM counts.
     - Early end before 5:00 PM counts.
     - A day filed with any leave/status type has no undertime.
+    - A system-wide holiday has no undertime.
     """
     if status_labels:
+        return 0, 0
+
+    if holidays_by_day and day in holidays_by_day:
         return 0, 0
 
     if date(year, month, day).weekday() >= 5:
@@ -351,7 +370,7 @@ def _create_employee_page(
         punches = daily_punches.get(day, DailyPunches(day=day))
         day_statuses = employee_status_by_day.get(day, [])
         undertime_hr, undertime_min = _calculate_undertime(
-            month.year, month.month, day, punches, day_statuses
+            month.year, month.month, day, punches, day_statuses, holidays_by_day
         )
         total_undertime_hr += undertime_hr
         total_undertime_min += undertime_min
@@ -492,6 +511,7 @@ def generate_dtr_pdf(
     department_head_positions: Optional[dict[int, str]] = None,
     month_holidays: Optional[dict[int, str]] = None,
     employee_status: Optional[dict[str, dict[int, list[str]]]] = None,
+    dtr_overrides: Optional[dict[str, dict[date, dict[str, str]]]] = None,
 ) -> None:
     """Generate a DTR PDF report for employees for a given month.
 
@@ -507,6 +527,7 @@ def generate_dtr_pdf(
         department_head_positions: Optional dictionary mapping department_id to department head position
         month_holidays: Optional mapping of day-of-month to holiday name for the month
         employee_status: Optional mapping of employee_id to day-of-month to list of status labels
+        dtr_overrides: Optional mapping of employee_id to date to DTR slot overrides
     """
     holidays_by_day = month_holidays or {}
     status_by_employee = employee_status or {}
@@ -548,7 +569,8 @@ def generate_dtr_pdf(
         employee_position = employee_positions.get(employee_id) if employee_positions else None
 
         # Map punches to daily slots
-        daily_punches = _map_punches_to_daily_slots(records, month)
+        employee_overrides = (dtr_overrides or {}).get(employee_id)
+        daily_punches = _map_punches_to_daily_slots(records, month, employee_overrides)
 
         employee_status_by_day = status_by_employee.get(employee_id, {})
 
