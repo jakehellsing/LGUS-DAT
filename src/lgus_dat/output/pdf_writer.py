@@ -16,7 +16,7 @@ from __future__ import annotations
 import calendar
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import Optional
 
@@ -34,17 +34,22 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from lgus_dat.domain.attendance_record import AttendanceRecord
+from lgus_dat.domain.attendance_record import AttendanceRecord, PunchStatus
 
 
 @dataclass
 class DailyPunches:
-    """Punch data for a single day with exactly 4 time slots."""
+    """Punch data for a single day with up to 4 time slots.
+
+    `last_punch` holds the time of the final chronological punch of the day,
+    which is used to compute undertime when the day is missing a final OUT.
+    """
     day: int
     in_am: Optional[str] = None
     out_am: Optional[str] = None
     in_pm: Optional[str] = None
     out_pm: Optional[str] = None
+    last_punch: Optional[str] = None
 
 
 def _remove_duplicate_punches(records: list[AttendanceRecord]) -> list[AttendanceRecord]:
@@ -108,19 +113,31 @@ def _map_punches_to_daily_slots(
     # Map to the 4 time slots
     daily_punches: dict[int, DailyPunches] = {}
     for day, day_records in daily_records.items():
-        punches = DailyPunches(day=day)
+        day_records.sort(key=lambda r: r.timestamp)
 
-        # Map first 4 punches to slots (if available)
-        for i, record in enumerate(day_records[:4]):
-            time_str = record.punch_time  # HH:MM:SS format
-            if i == 0:
-                punches.in_am = time_str
-            elif i == 1:
-                punches.out_am = time_str
-            elif i == 2:
-                punches.in_pm = time_str
-            elif i == 3:
-                punches.out_pm = time_str
+        in_records = [r for r in day_records if r.status == PunchStatus.IN]
+        out_records = [r for r in day_records if r.status == PunchStatus.OUT]
+
+        punches = DailyPunches(
+            day=day,
+            last_punch=day_records[-1].punch_time if day_records else None,
+        )
+
+        if in_records:
+            punches.in_am = in_records[0].punch_time
+        if out_records:
+            punches.out_am = out_records[0].punch_time
+        if len(in_records) >= 2:
+            punches.in_pm = in_records[1].punch_time
+
+        # The PM departure is the day's final OUT, but only when the day actually
+        # ends with an OUT. For two-punch days the single OUT stays as AM departure.
+        if (
+            day_records
+            and day_records[-1].status == PunchStatus.OUT
+            and len(out_records) >= 2
+        ):
+            punches.out_pm = out_records[-1].punch_time
 
         # Apply optional DTR slot overrides
         for slot, time_str in employee_overrides.get(day, {}).items():
@@ -191,10 +208,12 @@ def _parse_hhmmss(time_str: Optional[str]) -> Optional[time]:
 
 
 def _minutes_between(start: time, end: time) -> int:
-    """Return the whole minutes between two time objects."""
-    start_td = timedelta(hours=start.hour, minutes=start.minute, seconds=start.second)
-    end_td = timedelta(hours=end.hour, minutes=end.minute, seconds=end.second)
-    return int((end_td - start_td).total_seconds() // 60)
+    """Return the whole clock-minute difference between two time objects.
+
+    Seconds are ignored so that, for example, a 4:59 PM departure counts as
+    one minute early regardless of the seconds value.
+    """
+    return (end.hour * 60 + end.minute) - (start.hour * 60 + start.minute)
 
 
 def _has_any_punches(punches: DailyPunches) -> bool:
@@ -229,6 +248,8 @@ def _calculate_undertime(
     - Early end before 5:00 PM counts.
     - A day filed with any leave/status type has no undertime.
     - A system-wide holiday has no undertime.
+    - A day with no final OUT counts the missing hours from the last punch to
+      5:00 PM as undertime.
     """
     if status_labels:
         return 0, 0
@@ -256,12 +277,20 @@ def _calculate_undertime(
     if lunch_in and lunch_in > _OFFICIAL_LUNCH_IN:
         total_minutes += _minutes_between(_OFFICIAL_LUNCH_IN, lunch_in)
 
-    # Use the last available departure (PM first, then AM fallback for 2-punch days).
-    departure_str = punches.out_pm or punches.out_am
+    # Final departure: the PM OUT if the day ends with an OUT, otherwise the
+    # last recorded punch (which is the unpaired final IN). Fall back through
+    # AM OUT and AM IN for two-punch and single-punch days respectively.
+    departure_str = (
+        punches.out_pm
+        or punches.last_punch
+        or punches.out_am
+        or punches.in_am
+    )
     departure = _parse_hhmmss(departure_str)
     if departure and departure < _OFFICIAL_END:
         total_minutes += _minutes_between(departure, _OFFICIAL_END)
 
+    total_minutes = min(total_minutes, _OFFICIAL_WORKDAY_MINUTES)
     return total_minutes // 60, total_minutes % 60
 
 
