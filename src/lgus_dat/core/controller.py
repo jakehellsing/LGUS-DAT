@@ -323,6 +323,13 @@ class UIController:
         # Group records by employee
         grouped = group_records_by_employee(filtered_records)
 
+        # Ensure employees in scope but with zero punches for the month are
+        # still included so they get a blank DTR page (with weekday undertime)
+        # instead of being dropped and producing a corrupt/empty PDF.
+        in_scope_ids = self._in_scope_employee_ids(selection)
+        for emp_id in in_scope_ids:
+            grouped.setdefault(emp_id, [])
+
         holidays = self.registry.get_holidays_for_month(month.year, month.month)
         employee_status = {
             emp_id: self.registry.get_employee_status_for_month(emp_id, month.year, month.month)
@@ -371,6 +378,27 @@ class UIController:
             filtered = [r for r in records if r.employee_id in employee_ids]
         
         return filtered
+
+    def _in_scope_employee_ids(self, selection: dict) -> set[str]:
+        """Return the set of employee IDs covered by a DTR selection.
+
+        Used to guarantee that employees with zero punches for the month are
+        still emitted as blank DTR pages rather than dropped from the report.
+        """
+        mode = selection["mode"]
+
+        if mode == "all":
+            return {emp.device_user_id for emp in self.registry.all_employees()}
+        if mode == "employees":
+            return set(selection.get("employee_ids", []))
+        if mode == "departments":
+            department_ids = set(selection.get("department_ids", []))
+            return {
+                emp.device_user_id
+                for emp in self.registry.all_employees()
+                if emp.department_id in department_ids
+            }
+        return set()
 
     def import_user_dat(self, path: Path) -> tuple[list[Any], list[Any], int]:
         """Import user.dat file.

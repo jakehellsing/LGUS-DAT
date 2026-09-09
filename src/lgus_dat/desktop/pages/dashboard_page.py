@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from lgus_dat.desktop.desktop_controller import DesktopController
@@ -10,6 +11,8 @@ from lgus_dat.desktop.widgets.kpi_card import KpiCard
 
 class DashboardPage(QWidget):
     """Dashboard with summary metrics and quick actions."""
+
+    quick_action = Signal(str)
 
     def __init__(self, controller: DesktopController, parent=None) -> None:
         super().__init__(parent)
@@ -55,7 +58,7 @@ class DashboardPage(QWidget):
 
         for label in ["Open .DAT File", "Process Records", "Generate DTR PDF", "Export CSV"]:
             btn = QPushButton(label)
-            btn.setEnabled(False)
+            btn.clicked.connect(lambda _checked=False, action=label: self.quick_action.emit(action))
             actions_layout.addWidget(btn)
 
         actions_layout.addStretch()

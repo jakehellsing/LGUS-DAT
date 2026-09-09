@@ -917,3 +917,24 @@ configure attendance statuses that modify the DTR `Remarks` column.
     when generating the DTR preview or PDF.
 -   If an override is cleared or the slot is empty, the default four-punch
     mapping is used for that slot.
+
+## 28. Distribution, Installation, and Data Storage
+
+### Distribution Formats
+
+-   **Full Windows installer (Inno Setup)**: Produces `LGUS-DAT-Setup-V{VERSION}.exe`, which installs the one-directory PyInstaller bundle into `%ProgramFiles%\LGUS-DAT`, creates Start Menu (and optional Desktop) shortcuts, and registers an uninstall entry.
+-   **Patcher-only `.exe` (future)**: A small updater that scans the Windows registry for an existing `LGUS-DAT` installation and replaces only the files that have changed, without running a full install.
+-   **Portable ZIP / one-directory build**: `dist/desktop/lgus-dat-desktop-V{VERSION}` can be zipped and run from any writable location; intended for testing.
+-   **MSIX package (future)**: For Microsoft Store submission or enterprise sideloading.
+
+### Build Conventions
+
+-   Before any build, confirm whether the current version needs a **full installer** or a **patcher-only `.exe`**.
+-   The project version in `pyproject.toml` and `Docs/status.md` must match before building.
+-   The PyInstaller one-directory bundle is named `lgus-dat-desktop-V{VERSION}` and is packaged by Inno Setup.
+
+### SQLite Registry (`lgus_registry.db`)
+
+-   When the application is packaged/bundled (`sys.frozen`), `lgus_registry.db` is created next to the `.exe`, i.e., inside the installation directory. This keeps the database easy to find and back up manually.
+-   When running from source, `lgus_registry.db` is created in the current working directory.
+-   Because `%ProgramFiles%` is a protected directory, the installed `.exe` must be run with administrator rights to write the database. This is by design; the installer does **not** move the database to `%APPDATA%`.

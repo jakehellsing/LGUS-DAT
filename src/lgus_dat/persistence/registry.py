@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import sys
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -62,11 +63,20 @@ DEFAULT_LEAVE_TYPES: list[str] = [
 LEAVE_TYPE_SEED_VERSION = "1"
 
 
+def _default_db_path() -> Path:
+    """Return the default database path next to the executable when bundled."""
+    if getattr(sys, "frozen", False):
+        base = Path(sys.executable).parent
+    else:
+        base = Path.cwd()
+    return base / "lgus_registry.db"
+
+
 class AttendanceRegistry:
     """Local registry that maps device user/department IDs to human-readable data."""
 
     def __init__(self, db_path: Optional[Path] = None) -> None:
-        self.db_path = db_path or Path("lgus_registry.db")
+        self.db_path = db_path or _default_db_path()
         self._init_db()
 
     def _connection(self) -> sqlite3.Connection:

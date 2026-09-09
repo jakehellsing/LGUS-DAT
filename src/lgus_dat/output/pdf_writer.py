@@ -30,6 +30,7 @@ from reportlab.platypus import (
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
+    Spacer,
     Table,
     TableStyle,
 )
@@ -321,36 +322,36 @@ def _create_employee_page(
         "DTRTitle",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=12,
-        leading=14,
+        fontSize=15,
+        leading=18,
         alignment=TA_CENTER,
     )
     cert_style = ParagraphStyle(
         "Cert",
         parent=styles["Normal"],
-        fontSize=7,
-        leading=9,
+        fontSize=8,
+        leading=10,
         alignment=TA_CENTER,
     )
     info_style = ParagraphStyle(
         "Info",
         parent=styles["Normal"],
-        fontSize=8,
-        leading=10,
+        fontSize=9,
+        leading=11,
         alignment=TA_LEFT,
     )
     sig_style = ParagraphStyle(
         "Sig",
         parent=styles["Normal"],
-        fontSize=7,
-        leading=9,
+        fontSize=9,
+        leading=11,
         alignment=TA_CENTER,
     )
     remark_style = ParagraphStyle(
         "Remark",
         parent=styles["Normal"],
-        fontSize=5,
-        leading=6,
+        fontSize=6,
+        leading=7,
         alignment=TA_CENTER,
         splitLongWords=False,
     )
@@ -454,12 +455,12 @@ def _create_employee_page(
                 ("SPAN", (7, 0), (7, 1)),
                 # Header styling
                 ("FONTNAME", (0, 0), (-1, 1), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 1), 7),
+                ("FONTSIZE", (0, 0), (-1, 1), 8),
                 ("ALIGN", (0, 0), (-1, 1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, 1), "MIDDLE"),
                 # Data rows
                 ("FONTNAME", (0, 2), (-1, -2), "Helvetica"),
-                ("FONTSIZE", (0, 2), (-1, -2), 7),
+                ("FONTSIZE", (0, 2), (-1, -2), 8),
                 ("ALIGN", (0, 2), (-1, -2), "CENTER"),
                 ("VALIGN", (0, 2), (-1, -2), "MIDDLE"),
                 ("TOPPADDING", (0, 2), (-1, -2), 1),
@@ -467,7 +468,7 @@ def _create_employee_page(
                 # Total row
                 ("SPAN", (0, -1), (4, -1)),
                 ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-                ("FONTSIZE", (0, -1), (-1, -1), 8),
+                ("FONTSIZE", (0, -1), (-1, -1), 9),
                 ("ALIGN", (0, -1), (-1, -1), "CENTER"),
                 ("VALIGN", (0, -1), (-1, -1), "MIDDLE"),
                 ("ALIGN", (0, -1), (4, -1), "LEFT"),
@@ -484,9 +485,10 @@ def _create_employee_page(
     sig_data = [
         [""],
         [Paragraph(display_name, sig_style)],
-        [Paragraph("Employee", sig_style)],
-        [""],
+        [Paragraph(employee_position or "Employee", sig_style)],
         [Paragraph("Verified as to the prescribed office hours", sig_style)],
+        [""],
+        [""],
         [Paragraph(verifying_officer_name, sig_style)],
         [Paragraph(verifying_officer_position, sig_style)],
     ]
@@ -498,15 +500,31 @@ def _create_employee_page(
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("LINEBELOW", (0, 0), (0, 0), 0.5, colors.black),
                 ("LINEBELOW", (0, 5), (0, 5), 0.5, colors.black),
-                ("TOPPADDING", (0, 0), (-1, -1), 1),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ]
+        ),
+    )
+
+    # Title with a black rectangular border
+    title_box = Table(
+        [[title_para]],
+        colWidths=[page_width],
+        style=TableStyle(
+            [
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
             ]
         ),
     )
 
     # Combine into one vertical table
     page_data = [
-        [title_para],
+        [title_box],
+        [Spacer(1, 0.15 * inch)],
         [info_table],
         [dtr_table],
         [Paragraph(cert_text, cert_style)],
@@ -564,19 +582,36 @@ def generate_dtr_pdf(
     doc = SimpleDocTemplate(
         str(output_path),
         pagesize=letter,
-        rightMargin=0.4*inch,
-        leftMargin=0.4*inch,
-        topMargin=0.4*inch,
-        bottomMargin=0.4*inch,
+        rightMargin=0.25*inch,
+        leftMargin=0.25*inch,
+        topMargin=0.25*inch,
+        bottomMargin=0.25*inch,
     )
     
     elements = []
 
     # Two-column layout: two copies of the same DTR side-by-side on one page
-    col_width = (letter[0] - doc.leftMargin - doc.rightMargin - 0.1 * inch) / 2
+    col_width = (letter[0] - doc.leftMargin - doc.rightMargin - 0.05 * inch) / 2
 
     # Sort employees by ID for consistent ordering
     sorted_employee_ids = sorted(employee_records.keys())
+
+    if not sorted_employee_ids:
+        # No employees in scope (e.g. none registered). Emit a placeholder
+        # page so the output is a valid PDF rather than a 0-byte/corrupt file.
+        styles = getSampleStyleSheet()
+        placeholder_style = ParagraphStyle(
+            "Placeholder",
+            parent=styles["Normal"],
+            fontName="Helvetica",
+            fontSize=12,
+            alignment=TA_CENTER,
+        )
+        elements.append(
+            Paragraph("No employees found for the selected scope.", placeholder_style)
+        )
+        doc.build(elements)
+        return
 
     for i, employee_id in enumerate(sorted_employee_ids):
         records = employee_records[employee_id]

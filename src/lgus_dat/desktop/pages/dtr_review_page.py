@@ -243,11 +243,11 @@ class DailyDTRReviewPage(QWidget):
             self._clear_panels()
 
     def _refresh_employee_dtr(self) -> None:
-        if not self._current_employee_id or self._current_employee_id not in self._employee_records:
+        if not self._current_employee_id:
             self._clear_panels()
             return
 
-        records = self._employee_records[self._current_employee_id]
+        records = self._employee_records.get(self._current_employee_id, [])
         dtr_overrides = self.controller.ui.get_dtr_overrides_for_employee(
             self._current_employee_id
         )

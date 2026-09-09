@@ -62,12 +62,13 @@ class MainWindow(QMainWindow):
 
         self.filing_page = AttendanceFilingPage(self.controller)
         self.daily_page = DailyDTRReviewPage(self.controller)
+        self.reports_page = ReportsPage(self.controller)
 
         self.pages: dict[str, QWidget] = {
             "Dashboard": self.dashboard_page,
             "Import": self.import_page,
             "Processed": self.processed_page,
-            "Reports": ReportsPage(self.controller),
+            "Reports": self.reports_page,
             "Employees": EmployeesPage(self.controller),
             "Filing": self.filing_page,
             "Daily": self.daily_page,
@@ -75,6 +76,8 @@ class MainWindow(QMainWindow):
         }
         for page in self.pages.values():
             self.stack.addWidget(page)
+
+        self.dashboard_page.quick_action.connect(self._on_quick_action)
 
         main_layout.addWidget(self.stack, 1)
 
@@ -146,6 +149,18 @@ class MainWindow(QMainWindow):
         """Handle the process records signal from the import page."""
         self.processed_page.refresh()
         self._on_nav_clicked("Processed")
+
+    def _on_quick_action(self, action: str) -> None:
+        """Route dashboard quick-action buttons to the appropriate page workflow."""
+        if action == "Open .DAT File":
+            self.import_page._open_attendance()
+            self._on_nav_clicked("Import")
+        elif action == "Process Records":
+            self.import_page._process_all()
+        elif action == "Generate DTR PDF":
+            self.reports_page._generate_pdf()
+        elif action == "Export CSV":
+            self.reports_page._export_csv()
 
     def _open_all_records(self) -> None:
         """Open the window that shows every stored attendance record."""

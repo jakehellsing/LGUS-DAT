@@ -4,11 +4,13 @@
 
 ### Current Version
 
-`v1.0.0`
+`v1.0.2`
 
 ### Status
 
-Added a **Daily DTR Review** page to the PySide6 desktop UI: it shows an employee list, a DTR-style month preview, and a daily punch editor. The punch editor lets users change a punch's `IN`/`OUT` status and manually override the DTR time slots (`AM OUT`, `PM IN`, `PM OUT`) without altering the underlying sequence logic. Overrides are applied to the DTR preview and to generated DTR PDFs, and can be saved to the SQLite registry via a **Save Overrides** button so they persist across sessions. The punch table now shows only **Time** and **Status**, and the month selector is a dropdown of `yyyy-MM` values instead of a calendar popup.
+Updated DTR PDF output in `src/lgus_dat/output/pdf_writer.py` to more closely match the reference government form: the `DAILY TIME RECORD` title is now enclosed in a black rectangular border, fonts are larger across the title, table, certification, and signature, the employee position is printed under the employee signature line, and page margins were reduced to maximize printable area. A blank line was also added between the title box and the employee name.
+
+Added a **Daily DTR Review** page to the PySide6 desktop UI: it shows an employee list, a DTR-style month preview, and a daily punch editor. The punch editor lets users change a punch's `IN`/`OUT` status and manually override the DTR time slots (`AM OUT`, `PM IN`, `PM OUT`) without altering the underlying sequence logic. Overrides are applied to the DTR preview and to generated DTR PDFs, and can be saved to the SQLite registry via a **Save Overrides** button so they persist across sessions. The punch table now shows only **Time** and **Status**, and the month selector is a dropdown of `yyyy-MM` values instead of a calendar popup. The DTR month preview now renders the full 1-31 day grid for employees with zero punches for the selected month (blank time slots, computed weekday undertime, and weekday/holiday/leave remarks).
 
 Added an **Attendance Filing** page to the PySide6 desktop UI with three tabs: **Holidays** for system-wide holiday dates, **Leave Types** for a master status list, and **File Leave/Status** for per-employee date-range filings. The DTR PDF now looks up these holidays and filings when generating the monthly report and prints the status label(s) in the `Remarks` column; when both a holiday and an employee filing apply, the labels are combined. If no holiday or filing exists for a day, the column still shows the weekday abbreviation.
 
@@ -97,6 +99,7 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 - [x] Persistence of DTR slot overrides to the SQLite registry with a Save Overrides button
 - [x] Simplified punch table showing only Time and Status in the Daily DTR Review page
 - [x] Month selector dropdown (`yyyy-MM`) for the Daily DTR Review page
+- [x] Full 1-31 day DTR preview for employees with zero punches in the Daily DTR Review page
 - [x] Department name display (`ID - Name`) in the Employees table
 
 ### In Progress
@@ -154,19 +157,24 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 
 ||| v0.33.0 | 2026-09-04 | Added Daily DTR Review page with employee list, DTR preview, punch editing, manual DTR slot overrides, SQLite persistence, simplified punch table, and month dropdown. |
 ||| v1.0.0 | 2026-09-04 | Official V1.0 release for real-world HR use. |
+||| v1.0.1 | 2026-09-07 | Patch: blank DTR pages for employees with zero punches (lists weekday undertime), guard against corrupt/empty PDF output, and full 1-31 day DTR preview on the Daily DTR Review page for employees with no punches. |
+||| v1.0.2 | 2026-09-09 | Patch: DTR PDF formatting refinements: title border, larger fonts, employee position under signature, reduced margins, and a blank line between the title box and the employee name. |
 ||| v0.32.1 | 2026-09-03 | Improved Employees and Departments table column sizing so long department names are more visible. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
 
 ## Distribution and Installation Plan
 
-To make LGUS-DAT easier to run for HR staff, consider the following distribution formats:
+To make LGUS-DAT easier to run for HR staff, the following distribution formats are used:
 
-1. **One-file executable (current)**: `lgus-dat-desktop-V{VERSION}.exe` — single file, but slow startup and may trigger antivirus scanners.
-2. **Portable ZIP**: Build as a one-directory PyInstaller bundle, zip `dist/desktop/lgus-dat-desktop-V{VERSION}`, and distribute. Users unzip and run `lgus-dat-desktop-V{VERSION}.exe`.
-3. **Windows installer**: Use Inno Setup or a WiX/MSI project to create `LGUS-DAT-Setup-V{VERSION}.exe` that installs to `%ProgramFiles%`, creates Start Menu shortcuts, and registers an uninstall entry.
-4. **MSIX package**: For Microsoft Store submission or enterprise sideloading.
-5. **Size reduction**: For the PySide6 build, exclude unused heavy modules such as `tkinter` and `_tkinter`, enable UPX compression, and prefer one-directory builds to avoid one-file extraction overhead.
-6. **User-writable data directory**: When installed under `%ProgramFiles%`, store `lgus_registry.db` and settings under `%APPDATA%/LGUS-DAT` so the app works without admin rights.
+1. **Full Windows installer (Inno Setup)**: `LGUS-DAT-Setup-V{VERSION}.exe` installs the one-directory PyInstaller bundle to `%ProgramFiles%\LGUS-DAT`, creates Start Menu (and optional Desktop) shortcuts, and registers an uninstall entry.
+2. **Patcher-only `.exe` (future)**: A small updater that scans the registry for an existing `LGUS-DAT` installation and replaces only the changed files, without a full install.
+3. **Portable ZIP / one-directory build**: `dist/desktop/lgus-dat-desktop-V{VERSION}` can be zipped and run from any writable location. Useful for testing.
+4. **MSIX package**: For Microsoft Store submission or enterprise sideloading (future).
 
-Recommended near-term: keep the one-file build for quick testing and add a one-directory **portable ZIP** plus an **Inno Setup installer** for end users.
+Build/release notes:
+
+- Before starting any build, confirm whether the current version needs a **full installer** or a **patcher-only `.exe`**.
+- The project version in `pyproject.toml` and `Docs/status.md` must match before building.
+- The PyInstaller bundle is built as `lgus-dat-desktop-V{VERSION}` and packaged by Inno Setup.
+- The SQLite registry (`lgus_registry.db`) is stored next to the bundled `.exe` (inside the install directory) when the app is packaged, making it easy to back up. When running from source, it is stored in the current working directory. Because `%ProgramFiles%` is protected, the installed app must be run as administrator to write the database.
