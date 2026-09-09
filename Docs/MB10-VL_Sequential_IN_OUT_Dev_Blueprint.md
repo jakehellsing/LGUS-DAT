@@ -923,7 +923,7 @@ configure attendance statuses that modify the DTR `Remarks` column.
 ### Distribution Formats
 
 -   **Full Windows installer (Inno Setup)**: Produces `LGUS-DAT-Setup-V{VERSION}.exe`, which installs the one-directory PyInstaller bundle into `%ProgramFiles%\LGUS-DAT`, creates Start Menu (and optional Desktop) shortcuts, and registers an uninstall entry.
--   **Patcher-only `.exe` (future)**: A small updater that scans the Windows registry for an existing `LGUS-DAT` installation and replaces only the files that have changed, without running a full install.
+-   **Patcher-only `.exe` (`dist/patcher/lgus-dat-patcher-V{VERSION}.exe`)**: A small updater that scans the Inno Setup uninstall registry key for an existing `LGUS-DAT` installation, prompts for administrator rights, and replaces the installed files with the bundled `dist/desktop/lgus-dat-desktop-V{VERSION}` payload, without running a full install.
 -   **Portable ZIP / one-directory build**: `dist/desktop/lgus-dat-desktop-V{VERSION}` can be zipped and run from any writable location; intended for testing.
 -   **MSIX package (future)**: For Microsoft Store submission or enterprise sideloading.
 
@@ -932,6 +932,7 @@ configure attendance statuses that modify the DTR `Remarks` column.
 -   Before any build, confirm whether the current version needs a **full installer** or a **patcher-only `.exe`**.
 -   The project version in `pyproject.toml` and `Docs/status.md` must match before building.
 -   The PyInstaller one-directory bundle is named `lgus-dat-desktop-V{VERSION}` and is packaged by Inno Setup.
+-   The patcher is built as `dist/patcher/lgus-dat-patcher-V{VERSION}.exe` from `installer/patcher.py` with `--onefile` and `--uac-admin`, bundling `dist/desktop/lgus-dat-desktop-V{VERSION}` as an `update` data archive.
 
 ### SQLite Registry (`lgus_registry.db`)
 

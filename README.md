@@ -39,6 +39,8 @@ src/
 
 tests/              Automated tests
 Docs/               Blueprint, status, and feature guides
+assets/             Desktop logo image and generated .ico
+*.spec              PyInstaller build spec for the desktop executable
 ```
 
 ## Usage

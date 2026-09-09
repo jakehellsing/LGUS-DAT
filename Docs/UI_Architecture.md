@@ -290,6 +290,12 @@ def test_controller_workflow():
 - Updated search functionality to work with department names
 - Improved filtering by department name
 
+### App Logo / Branding
+
+- Added the Municipality of Sibuco seal as the desktop app logo (`assets/icon.png` and `assets/icon.ico`)
+- `src/lgus_dat/desktop/app.py` loads `assets/icon.ico` as a `QIcon` for the `QApplication` and main window
+- `lgus-dat-desktop-V1.0.2.spec` bundles the `assets/` directory and sets the executable icon
+
 ### All Records Window
 
 A standalone `AllRecordsWindow` is available from **View → All Records** in the main menu bar. It loads every attendance log directly from `AttendanceRegistry`, processes them into IN/OUT rows, and provides the same search and date-range filters as the Processed page. Because it reads from the persisted registry rather than the in-memory `UIState`, it always reflects the full accumulated dataset and can be refreshed after new imports without requiring the workflow-driven Processed tab.

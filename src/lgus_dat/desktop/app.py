@@ -3,12 +3,22 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from lgus_dat.desktop.desktop_controller import DesktopController
 from lgus_dat.desktop.main_window import MainWindow
 from lgus_dat.desktop.theme import apply_theme
+
+
+def _logo_path() -> Path:
+    """Resolve the desktop logo path for source and PyInstaller builds."""
+    if hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS) / "assets" / "icon.ico"
+    # src/lgus_dat/desktop/app.py -> repo root
+    return Path(__file__).resolve().parents[3] / "assets" / "icon.ico"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -17,8 +27,14 @@ def main(argv: list[str] | None = None) -> int:
     app = QApplication(args or [])
     apply_theme(app, False)
 
+    logo = _logo_path()
+    if logo.exists():
+        icon = QIcon(str(logo))
+        app.setWindowIcon(icon)
+
     controller = DesktopController()
     window = MainWindow(controller)
+    window.setWindowIcon(app.windowIcon())
     window.show()
     return app.exec()
 
