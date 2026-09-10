@@ -34,7 +34,7 @@ class MainWindow(QMainWindow):
     def __init__(self, controller: DesktopController) -> None:
         super().__init__()
         self.controller = controller
-        self.setWindowTitle("LGUS-DAT — MB10-VL Attendance Processor")
+        self.setWindowTitle("HRMO - SIBUCO DTR GENERATOR")
         self.setMinimumSize(1200, 800)
 
         view_menu = self.menuBar().addMenu("View")
