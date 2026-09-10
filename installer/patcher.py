@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import ctypes
+import os
 import shutil
+import subprocess
 import sys
 import winreg
 from pathlib import Path
@@ -65,6 +67,64 @@ def _update_source() -> Path:
     return Path(__file__).resolve().parents[1] / "dist" / "desktop" / f"lgus-dat-desktop-V{VERSION}"
 
 
+def _find_new_exe(source: Path) -> Path:
+    """Return the single versioned desktop executable bundled in the update."""
+    candidates = list(source.glob("lgus-dat-desktop-*.exe"))
+    if not candidates:
+        raise FileNotFoundError(f"No lgus-dat-desktop-*.exe found in {source}")
+    return candidates[0]
+
+
+def _prepare_install_dir(install_dir: Path, new_exe_name: str) -> None:
+    """Remove old versioned desktop exe and _internal so old files are not left behind."""
+    for old_exe in install_dir.glob("lgus-dat-desktop-*.exe"):
+        if old_exe.name != new_exe_name:
+            old_exe.unlink()
+    internal = install_dir / "_internal"
+    if internal.exists():
+        shutil.rmtree(internal)
+
+
+def _update_shortcuts(install_dir: Path, exe_name: str) -> None:
+    """Update any LGUS-DAT Start Menu or Desktop shortcuts to the new executable."""
+    new_exe = install_dir / exe_name
+    working_dir = str(install_dir)
+    icon = f"{new_exe},0"
+
+    candidate_dirs = [
+        Path(os.environ.get("ALLUSERSPROFILE", "C:\\ProgramData"))
+        / "Microsoft/Windows/Start Menu/Programs/LGUS-DAT",
+        Path(os.environ.get("APPDATA", os.path.expanduser("~\\AppData\\Roaming")))
+        / "Microsoft/Windows/Start Menu/Programs/LGUS-DAT",
+        Path.home() / "Desktop",
+    ]
+    if "PUBLIC" in os.environ:
+        candidate_dirs.append(Path(os.environ["PUBLIC"]) / "Desktop")
+
+    for directory in candidate_dirs:
+        lnk = directory / "LGUS-DAT.lnk"
+        if not lnk.exists():
+            continue
+        ps = (
+            f"$wsh = New-Object -ComObject WScript.Shell; "
+            f"$lnk = $wsh.CreateShortcut('{lnk}'); "
+            f"$lnk.TargetPath = '{new_exe}'; "
+            f"$lnk.WorkingDirectory = '{working_dir}'; "
+            f"$lnk.IconLocation = '{icon}'; "
+            f"$lnk.Save()"
+        )
+        try:
+            subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        except Exception:
+            # Shortcut update is non-fatal; the new executable is in place.
+            continue
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the patcher."""
     if not is_admin():
@@ -94,10 +154,14 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
+        new_exe = _find_new_exe(source)
+        _prepare_install_dir(install_dir, new_exe.name)
         shutil.copytree(source, install_dir, dirs_exist_ok=True)
     except Exception as e:  # pragma: no cover
         message_box(f"Patch failed: {e}", "LGUS-DAT Patcher", 0x10)
         return 1
+
+    _update_shortcuts(install_dir, new_exe.name)
 
     message_box(
         f"LGUS-DAT has been patched successfully in:\n{install_dir}",
