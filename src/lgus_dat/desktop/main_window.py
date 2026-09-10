@@ -5,6 +5,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
+    QButtonGroup,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -98,24 +99,26 @@ class MainWindow(QMainWindow):
         sidebar_layout.setSpacing(8)
 
         sidebar_label = QLabel("LGUS-DAT")
-        sidebar_label.setStyleSheet("font-weight: bold; font-size: 20px;")
+        sidebar_label.setObjectName("sidebarTitle")
         sidebar_label.setAlignment(Qt.AlignCenter)
         sidebar_layout.addWidget(sidebar_label)
 
         version_label = QLabel("Attendance & DTR")
-        version_label.setStyleSheet("font-size: 11px; color: gray;")
+        version_label.setObjectName("sidebarSubtitle")
         version_label.setAlignment(Qt.AlignCenter)
         sidebar_layout.addWidget(version_label)
 
         sidebar_layout.addSpacing(24)
 
+        self.nav_button_group = QButtonGroup(self)
+        self.nav_button_group.setExclusive(True)
         self.nav_buttons: list[QPushButton] = []
         for name in ["Dashboard", "Import", "Processed", "Reports", "Employees", "Filing", "Daily", "Settings"]:
             btn = QPushButton(name)
             btn.setCheckable(True)
-            btn.setAutoExclusive(True)
             btn.setCursor(Qt.PointingHandCursor)
             btn.clicked.connect(lambda checked, n=name: self._on_nav_clicked(n))
+            self.nav_button_group.addButton(btn)
             self.nav_buttons.append(btn)
             sidebar_layout.addWidget(btn)
 

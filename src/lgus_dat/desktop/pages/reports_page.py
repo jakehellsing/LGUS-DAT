@@ -31,6 +31,8 @@ class DTRScopeDialog(QDialog):
     def __init__(self, controller: DesktopController, parent=None) -> None:
         super().__init__(parent)
         self.controller = controller
+        self._all_items: list[tuple[str | int, str]] = []
+        self._selected_ids: set[str | int] = set()
         self.setWindowTitle("DTR Report Scope")
         self._build_ui()
 
@@ -47,11 +49,17 @@ class DTRScopeDialog(QDialog):
 
         layout.addLayout(mode_layout)
 
-        self.scope_label = QLabel("Select departments:")
+        self.scope_label = QLabel("All employees selected")
         layout.addWidget(self.scope_label)
+
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText("Search...")
+        self.search_edit.textChanged.connect(self._filter)
+        layout.addWidget(self.search_edit)
 
         self.scope_list = QListWidget()
         self.scope_list.setSelectionMode(QListWidget.MultiSelection)
+        self.scope_list.itemSelectionChanged.connect(self._on_selection_changed)
         layout.addWidget(self.scope_list)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -62,25 +70,47 @@ class DTRScopeDialog(QDialog):
         self._on_mode_changed(0)
 
     def _on_mode_changed(self, index: int) -> None:
-        self.scope_list.clear()
+        self._selected_ids = set()
+        self._all_items = []
+        self.search_edit.clear()
 
         if index == 0:  # All
             self.scope_label.setText("All employees selected")
             self.scope_list.setEnabled(False)
+            self.search_edit.setEnabled(False)
+            self.scope_list.clear()
+            return
         elif index == 1:  # By Department
             self.scope_label.setText("Select departments:")
             self.scope_list.setEnabled(True)
+            self.search_edit.setEnabled(True)
             for dept in self.controller.registry.all_departments():
-                item = QListWidgetItem(f"{dept.department_id} - {dept.name}")
-                item.setData(Qt.UserRole, dept.department_id)
-                self.scope_list.addItem(item)
+                self._all_items.append((dept.department_id, f"{dept.department_id} - {dept.name}"))
         elif index == 2:  # By Employee
             self.scope_label.setText("Select employees:")
             self.scope_list.setEnabled(True)
+            self.search_edit.setEnabled(True)
             for emp in self.controller.registry.all_employees():
-                item = QListWidgetItem(f"{emp.device_user_id} - {emp.name}")
-                item.setData(Qt.UserRole, emp.device_user_id)
+                self._all_items.append((emp.device_user_id, f"{emp.device_user_id} - {emp.name}"))
+
+        self._filter()
+
+    def _filter(self) -> None:
+        query = self.search_edit.text().strip().lower()
+        self.scope_list.blockSignals(True)
+        self.scope_list.clear()
+        for item_id, text in self._all_items:
+            if not query or query in text.lower() or query in str(item_id).lower():
+                item = QListWidgetItem(text)
+                item.setData(Qt.UserRole, item_id)
                 self.scope_list.addItem(item)
+                if item_id in self._selected_ids:
+                    item.setSelected(True)
+        self.scope_list.blockSignals(False)
+        self._on_selection_changed()
+
+    def _on_selection_changed(self) -> None:
+        self._selected_ids = {item.data(Qt.UserRole) for item in self.scope_list.selectedItems()}
 
     def get_selection(self) -> dict:
         """Return the selection dictionary for the DTR report."""

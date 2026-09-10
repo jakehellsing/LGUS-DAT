@@ -12,7 +12,8 @@ class KpiCard(QFrame):
     def __init__(self, title: str, value: str = "0", parent=None) -> None:
         super().__init__(parent)
 
-        self.setFrameShape(QFrame.StyledPanel)
+        self.setObjectName("kpiCard")
+        self.setFrameShape(QFrame.NoFrame)
         self.setMinimumWidth(160)
         self.setMinimumHeight(90)
 
@@ -21,11 +22,11 @@ class KpiCard(QFrame):
         layout.setSpacing(4)
 
         self.value_label = QLabel(value)
-        self.value_label.setStyleSheet("font-size: 24px; font-weight: bold;")
+        self.value_label.setObjectName("kpiValue")
         self.value_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         self.title_label = QLabel(title)
-        self.title_label.setStyleSheet("font-size: 12px; color: gray;")
+        self.title_label.setObjectName("kpiTitle")
 
         layout.addWidget(self.value_label)
         layout.addWidget(self.title_label)

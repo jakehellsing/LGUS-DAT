@@ -4,7 +4,7 @@
 
 ### Current Version
 
-`v1.0.2`
+`v1.0.3`
 
 ### Status
 
@@ -23,6 +23,8 @@ The DTR PDF now calculates daily undertime for Monday-Friday workdays against th
 Added a `head_name` field to the `Department` model and registry. The DTR PDF "Verifying Officer" signature line is now derived from the employee's department head name. The PySide6 Employees page allows viewing and editing the department head name. The binary `department.dat` importer/exporter is unchanged because the device format does not carry head metadata; the value is stored in the local SQLite registry only.
 
 Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package providing a dashboard, import, processed records with date filters, reports, employees, and settings pages. Raw attendance logs are now persisted and loaded on startup, and month-scoped processing allows users to process only a selected month. A new **All Records** window loads every stored log directly from the registry, processes it on demand, and provides search and date filters so users always see accumulated data. The employee edit dialog in the PySide6 Employees page is now a modal Save dialog and uses a department dropdown and a position dropdown for assignment. The position dropdown is fed by a master Positions tab with full CRUD (add, rename, delete). The Employees tab top row has been converted from an inline add form into search filters for ID, name, full name, position, and department; adding an employee now opens a dedicated `Add Employee` dialog. The DTR PDF report now matches the reference government form with two side-by-side copies per page, a `DAILY TIME RECORD` title, AM/PM/Undertime/Remarks table, certification text, and signature block, and renders an employee's position below their name when set. Employee table refreshes now fully clear old rows before repopulating to prevent mixed/stale data when filtering, and numeric columns sort as numbers when clicking column headers. A Refresh button was also added to the Employees tab. The legacy Tkinter UI has been removed; shared application logic now lives in `src/lgus_dat/core/`. Build artifacts, stale `.spec` files, and unused imports were cleaned up; the GitHub Actions workflow now builds the PySide6 desktop app as `lgus-dat-desktop-V{VERSION}`. The `requirements.txt` and `pyproject.toml` dependencies now list only the packages required by the PySide6 desktop and CLI (`PySide6`, `reportlab`, `pytest`).
+
+Polished the PySide6 desktop UI with a modern theme: updated sidebar, button, table, KPI card, and tab styles; fixed sidebar navigation to use an exclusive button group; and launched the app in maximized window mode. Added a live search bar to the DTR report scope dialog so users can filter employees or departments by ID or name as they type.
 
 ### Implemented
 
@@ -161,6 +163,7 @@ Migrated the desktop UI from Tkinter to PySide6, with a new `desktop/` package p
 ||| v1.0.0 | 2026-09-04 | Official V1.0 release for real-world HR use. |
 ||| v1.0.1 | 2026-09-07 | Patch: blank DTR pages for employees with zero punches (lists weekday undertime), guard against corrupt/empty PDF output, and full 1-31 day DTR preview on the Daily DTR Review page for employees with no punches. |
 ||| v1.0.2 | 2026-09-09 | Patch: DTR PDF formatting refinements: title border, larger fonts, employee position under signature, reduced margins, and a blank line between the title box and the employee name. |
+||| v1.0.3 | 2026-09-10 | Patch: UI theme polish, maximized main window, and live search filter in the DTR report scope dialog. |
 ||| v0.32.1 | 2026-09-03 | Improved Employees and Departments table column sizing so long department names are more visible. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.

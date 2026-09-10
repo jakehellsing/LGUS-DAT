@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     controller = DesktopController()
     window = MainWindow(controller)
     window.setWindowIcon(app.windowIcon())
-    window.show()
+    window.showMaximized()
     return app.exec()
 
 
