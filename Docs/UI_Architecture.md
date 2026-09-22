@@ -26,6 +26,7 @@ src/lgus_dat/desktop/  # PySide6 desktop interface
     dashboard_page.py  # KPIs and quick actions
     import_page.py     # File import and month-scoped processing
     processed_page.py  # Processed records with search and date filters
+    dtr_review_page.py # Daily DTR review: employee list, month DTR preview, punch editor with slot overrides, per-employee DTR PDF export
     reports_page.py    # DTR PDF, CSV, and attlog export
     employees_page.py  # Employee and department management, including department head name for DTR Verifying Officer
     settings_page.py   # Placeholder settings page

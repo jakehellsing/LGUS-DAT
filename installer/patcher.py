@@ -10,7 +10,7 @@ import winreg
 from pathlib import Path
 
 APP_ID = "72D4E2B4-7F6A-4B7E-9C1D-3E8A5F2B1C6D"
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 
 def is_admin() -> bool:

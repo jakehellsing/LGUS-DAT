@@ -73,11 +73,25 @@ The LGUS-DAT application now includes DTR (Daily Time Record) PDF generation fun
    - Choose the output location and filename
    - The PDF will be generated with one physical page per employee, containing two side-by-side DTR copies
 
+### Per-Employee Export (Daily DTR Review page)
+
+The **Daily DTR Review** page provides an **Export DTR PDF** button for the
+employee and month currently in view:
+
+1. Select an employee in the left pane and pick the month in the dropdown.
+2. Fix punches as needed (IN/OUT status edits, manual DTR slot overrides).
+3. Click **Export DTR PDF** and choose the output location.
+
+This produces the same single-employee DTR PDF as the Reports page with a
+"Specific Employees" scope, but skips the scope dialog so corrected records
+can be exported immediately.
+
 ### Technical Details
 
 #### File Location
 - PDF writer module: `src/lgus_dat/output/pdf_writer.py`
 - Selection dialog: `src/lgus_dat/desktop/pages/reports_page.py`
+- Per-employee export: `src/lgus_dat/desktop/pages/dtr_review_page.py`
 - GUI integration: `src/lgus_dat/desktop/app.py`
 
 #### Dependencies

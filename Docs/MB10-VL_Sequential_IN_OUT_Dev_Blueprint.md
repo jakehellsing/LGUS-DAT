@@ -774,6 +774,8 @@ Main Window
 |   |-- Dashboard
 |   |-- Import
 |   |-- Processed Records
+|   |-- Daily DTR Review
+|   |-- Attendance Filing
 |   |-- Reports
 |   |-- Employees
 |   |-- Settings
@@ -782,6 +784,10 @@ Main Window
 |   |-- Dashboard page: KPI cards and quick actions
 |   |-- Import page: file import and raw input preview
 |   |-- Processed Records page: IN/OUT output, filters, search
+|   |-- Daily DTR Review page: employee list, month DTR preview, daily punch
+|   |   editor with IN/OUT status editing, manual DTR slot overrides, and a
+|   |   per-employee Export DTR PDF button
+|   |-- Attendance Filing page: holidays, leave types, employee filings
 |   |-- Reports page: DTR PDF, CSV, attlog export
 |   |-- Employees page: employee and department management, including department head name and position on the DTR signature line
 |
@@ -917,6 +923,10 @@ configure attendance statuses that modify the DTR `Remarks` column.
     when generating the DTR preview or PDF.
 -   If an override is cleared or the slot is empty, the default four-punch
     mapping is used for that slot.
+-   The **Daily DTR Review** page also provides an **Export DTR PDF** button
+    that generates a single-employee DTR PDF for the employee and month
+    currently in view, so punch fixes and slot overrides can be exported
+    without going through the Reports page scope dialog.
 
 ## 28. Distribution, Installation, and Data Storage
 

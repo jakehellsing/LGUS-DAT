@@ -95,6 +95,7 @@ The PySide6 desktop UI lets you import `.dat` files, process them into IN/OUT ro
 - **DTR PDF generation** with excel-like monthly attendance reports
 - DTR undertime calculation for Mon-Fri 8:00 AM - 5:00 PM (late arrivals and early departures; system-wide holidays excluded)
 - DTR report scope selection (all, by department, by specific employees)
+- Per-employee DTR PDF export directly from the Daily DTR Review page
 - CSV and NGTeco-compatible `attlog.dat` export with workcode '1'
 - Employee and department management with CRUD operations
 - Employee full-name profile for DTR PDF output only
