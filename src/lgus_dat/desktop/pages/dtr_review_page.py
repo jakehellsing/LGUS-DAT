@@ -5,10 +5,12 @@ from __future__ import annotations
 import calendar
 from collections import defaultdict
 from datetime import date
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
+    QFileDialog,
     QHBoxLayout,
     QHeaderView,
     QInputDialog,
@@ -25,6 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 from lgus_dat.desktop.desktop_controller import DesktopController
+from lgus_dat.desktop.widgets.progress_dialog import ProgressDialog
 from lgus_dat.domain.attendance_record import AttendanceRecord, PunchStatus
 from lgus_dat.output.pdf_writer import (
     DailyPunches,
@@ -100,6 +103,13 @@ class DailyDTRReviewPage(QWidget):
         controls.addWidget(load_btn)
 
         controls.addStretch()
+
+        self.export_btn = QPushButton("Export DTR PDF")
+        self.export_btn.setToolTip("Export the DTR PDF for the selected employee and month")
+        self.export_btn.setEnabled(False)
+        self.export_btn.clicked.connect(self._export_employee_dtr)
+        controls.addWidget(self.export_btn)
+
         center_layout.addLayout(controls)
 
         self.dtr_table = QTableWidget()
@@ -199,6 +209,7 @@ class DailyDTRReviewPage(QWidget):
     def _on_employee_changed(self, row: int) -> None:
         if row < 0:
             self._current_employee_id = None
+            self.export_btn.setEnabled(False)
             self._clear_panels()
             return
 
@@ -207,6 +218,7 @@ class DailyDTRReviewPage(QWidget):
             return
 
         self._current_employee_id = item.data(Qt.UserRole)
+        self.export_btn.setEnabled(True)
         self._refresh_employee_dtr()
 
     def _on_load_month(self) -> None:
@@ -404,6 +416,35 @@ class DailyDTRReviewPage(QWidget):
         if self._current_employee_id is None:
             return
         self.controller.ui.save_dtr_overrides_for_employee(self._current_employee_id)
+
+    def _export_employee_dtr(self) -> None:
+        """Export the DTR PDF for the employee and month currently in view."""
+        if self._current_employee_id is None:
+            return
+
+        self.controller.ui.ensure_processed()
+
+        emp_label = self._current_employee_id
+        emp = self.controller.registry.get_employee(self._current_employee_id)
+        if emp is not None and emp.name:
+            safe_name = "".join(c if c.isalnum() else "_" for c in emp.name)
+            emp_label = f"{self._current_employee_id}_{safe_name}"
+
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save DTR PDF",
+            f"DTR_{emp_label}_{self._current_month:%Y_%m}.pdf",
+            "PDF files (*.pdf);;All files (*.*)",
+        )
+        if not path:
+            return
+
+        selection = {"mode": "employees", "employee_ids": [self._current_employee_id]}
+        ProgressDialog("Generating", "Creating DTR PDF...", self).run_task(
+            lambda: self.controller.ui.generate_dtr_pdf(
+                selection, self._current_month, Path(path)
+            )
+        )
 
     def _clear_panels(self) -> None:
         self.dtr_table.setRowCount(0)

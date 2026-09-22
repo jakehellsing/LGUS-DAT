@@ -4,9 +4,12 @@
 
 ### Current Version
 
-`v1.0.3`
+`v1.0.4`
 
 ### Status
+
+Added an **Export DTR PDF** button to the Daily DTR Review page. It generates a single-employee DTR PDF for the employee and month currently in view, so punch fixes and slot overrides can be exported immediately without going through the Reports page scope dialog. The button is enabled only when an employee is selected and reuses the existing `generate_dtr_pdf` path with an employee-scoped selection.
+
 
 Updated DTR PDF output in `src/lgus_dat/output/pdf_writer.py` to more closely match the reference government form: the `DAILY TIME RECORD` title is now enclosed in a black rectangular border, fonts are larger across the title, table, certification, and signature, the employee position is printed under the employee signature line, and page margins were reduced to maximize printable area. A blank line was also added between the title box and the employee name.
 
@@ -105,6 +108,7 @@ Polished the PySide6 desktop UI with a modern theme: updated sidebar, button, ta
 - [x] Month selector dropdown (`yyyy-MM`) for the Daily DTR Review page
 - [x] Full 1-31 day DTR preview for employees with zero punches in the Daily DTR Review page
 - [x] Department name display (`ID - Name`) in the Employees table
+- [x] Per-employee DTR PDF export button on the Daily DTR Review page
 
 ### In Progress
 
@@ -164,6 +168,7 @@ Polished the PySide6 desktop UI with a modern theme: updated sidebar, button, ta
 ||| v1.0.1 | 2026-09-07 | Patch: blank DTR pages for employees with zero punches (lists weekday undertime), guard against corrupt/empty PDF output, and full 1-31 day DTR preview on the Daily DTR Review page for employees with no punches. |
 ||| v1.0.2 | 2026-09-09 | Patch: DTR PDF formatting refinements: title border, larger fonts, employee position under signature, reduced margins, and a blank line between the title box and the employee name. |
 ||| v1.0.3 | 2026-09-10 | Patch: UI theme polish, maximized main window, and live search filter in the DTR report scope dialog. |
+||| v1.0.4 | 2026-09-22 | Patch: added an Export DTR PDF button on the Daily DTR Review page to generate a single-employee DTR PDF for the selected month. |
 ||| v0.32.1 | 2026-09-03 | Improved Employees and Departments table column sizing so long department names are more visible. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
