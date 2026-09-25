@@ -250,6 +250,9 @@ class AttendanceFilingPage(QWidget):
         self.employee_list = QListWidget()
         self.employee_list.setMinimumHeight(140)
         self.employee_list.itemChanged.connect(self._update_selected_employees)
+        self.employee_list.itemPressed.connect(self._on_employee_pressed)
+        self.employee_list.itemClicked.connect(self._on_employee_clicked)
+        self._last_pressed_check_state = None
         list_layout.addWidget(self.employee_list)
 
         list_btn_layout = QHBoxLayout()
@@ -347,6 +350,13 @@ class AttendanceFilingPage(QWidget):
             if item.checkState() == Qt.Checked:
                 QListWidgetItem(item.text(), self.selected_employees_list)
 
+    def _on_employee_pressed(self, item: QListWidgetItem) -> None:
+        self._last_pressed_check_state = item.checkState()
+
+    def _on_employee_clicked(self, item: QListWidgetItem) -> None:
+        if item.checkState() == self._last_pressed_check_state:
+            item.setCheckState(Qt.Unchecked if item.checkState() == Qt.Checked else Qt.Checked)
+
     def _select_all_employees(self) -> None:
         self.employee_list.blockSignals(True)
         for i in range(self.employee_list.count()):
@@ -397,7 +407,7 @@ class AttendanceFilingPage(QWidget):
             if item.checkState() == Qt.Checked:
                 selected_ids.append(item.data(Qt.UserRole))
         if not selected_ids:
-            QMessageBox.warning(self, "Missing Data", "Please select at least one employee.")
+            QMessageBox.warning(self, "Missing Data", "Please check at least one employee by clicking the checkbox next to their name.")
             return
 
         status = self.status_combo.currentData()
@@ -414,15 +424,18 @@ class AttendanceFilingPage(QWidget):
             QMessageBox.warning(self, "Validation", "End date cannot be earlier than start date.")
             return
 
-        for employee_id in selected_ids:
-            filing = AttendanceFiling(
-                employee_id=employee_id,
-                start_date=start,
-                end_date=end,
-                status=status,
-            )
-            self.controller.registry.file_employee_status(filing)
-        self._refresh_filings()
+        try:
+            for employee_id in selected_ids:
+                filing = AttendanceFiling(
+                    employee_id=employee_id,
+                    start_date=start,
+                    end_date=end,
+                    status=status,
+                )
+                self.controller.registry.file_employee_status(filing)
+            self._refresh_filings()
+        except Exception as exc:
+            QMessageBox.critical(self, "Filing Error", str(exc))
 
     def _delete_filing(self) -> None:
         selected = self.filings_table.selectedItems()
