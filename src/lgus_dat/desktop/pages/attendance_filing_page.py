@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QPushButton,
     QTabWidget,
@@ -236,17 +238,40 @@ class AttendanceFilingPage(QWidget):
         top = QHBoxLayout()
         top.setSpacing(12)
 
+        left_panel = QVBoxLayout()
         self.employee_filter = QLineEdit()
         self.employee_filter.setPlaceholderText("Filter employees...")
         self.employee_filter.setMinimumWidth(160)
-        self.employee_filter.textChanged.connect(self._refresh_employee_combo)
-        top.addWidget(self.employee_filter)
+        self.employee_filter.textChanged.connect(self._refresh_employee_list)
+        left_panel.addWidget(self.employee_filter)
 
-        top.addWidget(QLabel("Employee:"))
-        self.employee_combo = QComboBox()
-        self.employee_combo.setMinimumWidth(220)
-        top.addWidget(self.employee_combo)
-        top.addStretch()
+        list_layout = QVBoxLayout()
+        list_layout.addWidget(QLabel("Employees (check to file):"))
+        self.employee_list = QListWidget()
+        self.employee_list.setMinimumHeight(140)
+        self.employee_list.itemChanged.connect(self._update_selected_employees)
+        list_layout.addWidget(self.employee_list)
+
+        list_btn_layout = QHBoxLayout()
+        select_all_btn = QPushButton("Select All")
+        select_all_btn.clicked.connect(self._select_all_employees)
+        list_btn_layout.addWidget(select_all_btn)
+        clear_btn = QPushButton("Clear")
+        clear_btn.clicked.connect(self._clear_employee_selection)
+        list_btn_layout.addWidget(clear_btn)
+        list_btn_layout.addStretch()
+        list_layout.addLayout(list_btn_layout)
+
+        left_panel.addLayout(list_layout)
+        top.addLayout(left_panel, stretch=1)
+
+        selected_layout = QVBoxLayout()
+        selected_layout.addWidget(QLabel("Selected employees:"))
+        self.selected_employees_list = QListWidget()
+        self.selected_employees_list.setMinimumHeight(140)
+        selected_layout.addWidget(self.selected_employees_list)
+        top.addLayout(selected_layout, stretch=1)
+
         controls.addLayout(top)
 
         bottom = QHBoxLayout()
@@ -294,20 +319,47 @@ class AttendanceFilingPage(QWidget):
         self.filings_table.setSortingEnabled(True)
         layout.addWidget(self.filings_table)
 
-    def _refresh_employee_combo(self) -> None:
+    def _refresh_employee_list(self) -> None:
         filter_text = self.employee_filter.text().strip().lower()
-        current = self.employee_combo.currentData()
-        self.employee_combo.clear()
+        checked = set()
+        for i in range(self.employee_list.count()):
+            item = self.employee_list.item(i)
+            if item.checkState() == Qt.Checked:
+                checked.add(item.data(Qt.UserRole))
+        self.employee_list.blockSignals(True)
+        self.employee_list.clear()
         for emp in self.controller.registry.all_employees():
-            display = f"{emp.device_user_id} - {emp.name}"
+            display = emp.full_name or emp.name
             if filter_text and filter_text not in display.lower():
                 continue
-            self.employee_combo.addItem(display, emp.device_user_id)
+            item = QListWidgetItem(display)
+            item.setData(Qt.UserRole, emp.device_user_id)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.Checked if emp.device_user_id in checked else Qt.Unchecked)
+            self.employee_list.addItem(item)
+        self.employee_list.blockSignals(False)
+        self._update_selected_employees()
 
-        for i in range(self.employee_combo.count()):
-            if self.employee_combo.itemData(i) == current:
-                self.employee_combo.setCurrentIndex(i)
-                break
+    def _update_selected_employees(self) -> None:
+        self.selected_employees_list.clear()
+        for i in range(self.employee_list.count()):
+            item = self.employee_list.item(i)
+            if item.checkState() == Qt.Checked:
+                QListWidgetItem(item.text(), self.selected_employees_list)
+
+    def _select_all_employees(self) -> None:
+        self.employee_list.blockSignals(True)
+        for i in range(self.employee_list.count()):
+            self.employee_list.item(i).setCheckState(Qt.Checked)
+        self.employee_list.blockSignals(False)
+        self._update_selected_employees()
+
+    def _clear_employee_selection(self) -> None:
+        self.employee_list.blockSignals(True)
+        for i in range(self.employee_list.count()):
+            self.employee_list.item(i).setCheckState(Qt.Unchecked)
+        self.employee_list.blockSignals(False)
+        self._update_selected_employees()
 
     def _refresh_status_combos(self) -> None:
         current = self.status_combo.currentData()
@@ -339,9 +391,13 @@ class AttendanceFilingPage(QWidget):
             self.filings_table.setItem(row, 5, id_item)
 
     def _add_filing(self) -> None:
-        employee_id = self.employee_combo.currentData()
-        if not employee_id:
-            QMessageBox.warning(self, "Missing Data", "Please select an employee.")
+        selected_ids = []
+        for i in range(self.employee_list.count()):
+            item = self.employee_list.item(i)
+            if item.checkState() == Qt.Checked:
+                selected_ids.append(item.data(Qt.UserRole))
+        if not selected_ids:
+            QMessageBox.warning(self, "Missing Data", "Please select at least one employee.")
             return
 
         status = self.status_combo.currentData()
@@ -358,13 +414,14 @@ class AttendanceFilingPage(QWidget):
             QMessageBox.warning(self, "Validation", "End date cannot be earlier than start date.")
             return
 
-        filing = AttendanceFiling(
-            employee_id=employee_id,
-            start_date=start,
-            end_date=end,
-            status=status,
-        )
-        self.controller.registry.file_employee_status(filing)
+        for employee_id in selected_ids:
+            filing = AttendanceFiling(
+                employee_id=employee_id,
+                start_date=start,
+                end_date=end,
+                status=status,
+            )
+            self.controller.registry.file_employee_status(filing)
         self._refresh_filings()
 
     def _delete_filing(self) -> None:
@@ -389,6 +446,6 @@ class AttendanceFilingPage(QWidget):
         """Refresh all tables and combo boxes from the registry."""
         self._refresh_holidays()
         self._refresh_leave_types()
-        self._refresh_employee_combo()
+        self._refresh_employee_list()
         self._refresh_status_combos()
         self._refresh_filings()

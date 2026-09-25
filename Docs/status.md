@@ -8,6 +8,8 @@
 
 ### Status
 
+Improved the **Attendance Filing** page to support batch leave/status filing: the employee list now displays full names, supports real-time filtering, and shows a separate **Selected employees** panel that updates in real time as employees are checked or unchecked.
+
 Added an **Export DTR PDF** button to the Daily DTR Review page. It generates a single-employee DTR PDF for the employee and month currently in view, so punch fixes and slot overrides can be exported immediately without going through the Reports page scope dialog. The button is enabled only when an employee is selected and reuses the existing `generate_dtr_pdf` path with an employee-scoped selection.
 
 
@@ -169,6 +171,7 @@ Polished the PySide6 desktop UI with a modern theme: updated sidebar, button, ta
 ||| v1.0.2 | 2026-09-09 | Patch: DTR PDF formatting refinements: title border, larger fonts, employee position under signature, reduced margins, and a blank line between the title box and the employee name. |
 ||| v1.0.3 | 2026-09-10 | Patch: UI theme polish, maximized main window, and live search filter in the DTR report scope dialog. |
 ||| v1.0.4 | 2026-09-22 | Patch: added an Export DTR PDF button on the Daily DTR Review page to generate a single-employee DTR PDF for the selected month. |
+||| v1.0.4-1 | 2026-09-25 | Patch: improved Attendance Filing with batch full-name selection and a real-time selected-employees panel. |
 ||| v0.32.1 | 2026-09-03 | Improved Employees and Departments table column sizing so long department names are more visible. |
 
 Bump the version in this file whenever a significant milestone, feature, or release is completed.
