@@ -4,9 +4,11 @@
 
 ### Current Version
 
-`v1.0.4`
+`v1.0.6`
 
 ### Status
+
+Fixed a crash when printing a DTR for an employee whose report content exceeded the single-page frame height (for example, `Remarks` cells wrapping to extra lines for combined holiday/status labels). Each half-page DTR is now wrapped in a ReportLab `KeepInFrame` shrink container in `src/lgus_dat/output/pdf_writer.py`, so an oversized DTR scales down to fit the page instead of raising a "flowable too large" `LayoutError` and aborting the entire PDF build.
 
 Improved the **Attendance Filing** page to support batch leave/status filing: the employee list now displays full names, supports real-time filtering, and shows a separate **Selected employees** panel that updates in real time as employees are checked or unchecked. Clicking an employee row toggles the checkbox, and filing errors are now shown to the user instead of failing silently.
 
@@ -172,6 +174,7 @@ Polished the PySide6 desktop UI with a modern theme: updated sidebar, button, ta
 ||| v1.0.3 | 2026-09-10 | Patch: UI theme polish, maximized main window, and live search filter in the DTR report scope dialog. |
 ||| v1.0.4 | 2026-09-22 | Patch: added an Export DTR PDF button on the Daily DTR Review page to generate a single-employee DTR PDF for the selected month. |
 ||| v1.0.5 | 2026-10-05 | Patch: `user.dat` import no longer wipes locally edited employee fields (`full_name`, `position`, `department_id`); import now refreshes device-sourced fields only and preserves local edits. |
+||| v1.0.6 | 2026-10-05 | Patch: fixed DTR PDF generation failing with a "flowable too large" error for employees whose page content exceeds the printable height; oversized DTR pages now shrink to fit instead of aborting the build. |
 ||| v1.0.4-1 | 2026-09-25 | Patch: improved Attendance Filing with batch full-name selection and a real-time selected-employees panel. |
 ||| v1.0.4-2 | 2026-09-25 | Patch: fixed the Attendance Filing `File` button to file the selected leave/status correctly, made rows clickable to toggle checkboxes, and surfaced filing errors to the user. |
 ||| v0.32.1 | 2026-09-03 | Improved Employees and Departments table column sizing so long department names are more visible. |

@@ -26,6 +26,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
+    KeepInFrame,
     KeepTogether,
     PageBreak,
     Paragraph,
@@ -593,6 +594,13 @@ def generate_dtr_pdf(
     # Two-column layout: two copies of the same DTR side-by-side on one page
     col_width = (letter[0] - doc.leftMargin - doc.rightMargin - 0.05 * inch) / 2
 
+    # Usable frame height: page height minus the doc margins and the frame's
+    # internal 6pt top/bottom padding. The outer 1x3 table is a single row and
+    # cannot split, so a DTR taller than the frame (e.g. remarks wrapping to
+    # extra lines for one employee) aborts the whole build. KeepInFrame with
+    # mode="shrink" scales an oversized half-page down to fit instead.
+    frame_height = letter[1] - doc.topMargin - doc.bottomMargin - 12
+
     # Sort employees by ID for consistent ordering
     sorted_employee_ids = sorted(employee_records.keys())
 
@@ -665,6 +673,9 @@ def generate_dtr_pdf(
             holidays_by_day=holidays_by_day,
             employee_status_by_day=employee_status_by_day,
         )
+
+        left_page = KeepInFrame(col_width, frame_height, [left_page], mode="shrink")
+        right_page = KeepInFrame(col_width, frame_height, [right_page], mode="shrink")
 
         outer = Table(
             [[left_page, "", right_page]],
