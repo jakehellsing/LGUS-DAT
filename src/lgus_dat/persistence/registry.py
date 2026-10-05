@@ -365,10 +365,37 @@ class AttendanceRegistry:
         return count
 
     def import_employees(self, employees: list[Employee]) -> int:
+        """Import device `user.dat` records without clobbering local edits.
+
+        On conflict, device-sourced fields (name, raw_record) are refreshed,
+        while locally maintained fields (full_name, position, department_id)
+        keep their existing values unless the import provides one.
+        """
         count = 0
-        for emp in employees:
-            self.upsert_employee(emp)
-            count += 1
+        with self._connection() as conn:
+            for emp in employees:
+                conn.execute(
+                    """
+                    INSERT INTO employees (device_user_id, name, full_name, position, department_id, raw_record)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(device_user_id) DO UPDATE SET
+                        name = COALESCE(NULLIF(excluded.name, ''), employees.name),
+                        full_name = COALESCE(employees.full_name, excluded.full_name),
+                        position = COALESCE(employees.position, excluded.position),
+                        department_id = COALESCE(employees.department_id, excluded.department_id),
+                        raw_record = excluded.raw_record
+                    """,
+                    (
+                        emp.device_user_id,
+                        emp.name,
+                        emp.full_name,
+                        emp.position,
+                        emp.department_id,
+                        emp.raw_record,
+                    ),
+                )
+                count += 1
+            conn.commit()
         return count
 
     def _row_to_employee(self, row: sqlite3.Row) -> Employee:

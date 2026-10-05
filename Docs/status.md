@@ -171,6 +171,7 @@ Polished the PySide6 desktop UI with a modern theme: updated sidebar, button, ta
 ||| v1.0.2 | 2026-09-09 | Patch: DTR PDF formatting refinements: title border, larger fonts, employee position under signature, reduced margins, and a blank line between the title box and the employee name. |
 ||| v1.0.3 | 2026-09-10 | Patch: UI theme polish, maximized main window, and live search filter in the DTR report scope dialog. |
 ||| v1.0.4 | 2026-09-22 | Patch: added an Export DTR PDF button on the Daily DTR Review page to generate a single-employee DTR PDF for the selected month. |
+||| v1.0.5 | 2026-10-05 | Patch: `user.dat` import no longer wipes locally edited employee fields (`full_name`, `position`, `department_id`); import now refreshes device-sourced fields only and preserves local edits. |
 ||| v1.0.4-1 | 2026-09-25 | Patch: improved Attendance Filing with batch full-name selection and a real-time selected-employees panel. |
 ||| v1.0.4-2 | 2026-09-25 | Patch: fixed the Attendance Filing `File` button to file the selected leave/status correctly, made rows clickable to toggle checkboxes, and surfaced filing errors to the user. |
 ||| v0.32.1 | 2026-09-03 | Improved Employees and Departments table column sizing so long department names are more visible. |
