@@ -6,7 +6,9 @@ The blueprint defines the core business rules, architecture, and acceptance crit
 
 ## Git Workflow
 
-Do not create branches. Use tags for checkpoints and releases instead.
+Feature branches are allowed. Larger work may happen on feature branches (e.g., `feature-hris-connector`) and merge back into `main` when ready. Small fixes may still go directly to `main`.
+
+Use tags for checkpoints and releases on `main` as before.
 
 ## Build & Release Conventions
 
