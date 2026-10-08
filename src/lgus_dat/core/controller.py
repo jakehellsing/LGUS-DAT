@@ -12,6 +12,7 @@ from lgus_dat.importers.department_parser import parse_department_dat
 from lgus_dat.importers.user_parser import parse_user_dat
 from lgus_dat.output.attlog_writer import write_attlog
 from lgus_dat.output.csv_writer import write_csv
+from lgus_dat.output.dtr_csv_writer import write_dtr_csv
 from lgus_dat.output.pdf_writer import generate_dtr_pdf, group_records_by_employee
 from lgus_dat.parser.dat_parser import ParsedRecord, parse_dat_file
 from lgus_dat.persistence.registry import AttendanceRegistry
@@ -273,59 +274,30 @@ class UIController:
         write_attlog(self.state.processed_records, path)
         return len(self.state.processed_records)
 
-    def generate_dtr_pdf(
+    def _prepare_dtr_export(
         self,
         selection: dict,
         month: date,
-        path: Path,
-    ) -> tuple[str, int]:
-        """Generate DTR PDF report.
-        
-        Args:
-            selection: Selection dictionary from PDF dialog
-            month: Month for the report
-            path: Output file path
-            
+    ) -> tuple[dict, dict[str, str], dict[int, str], dict[str, dict[int, list[str]]], int]:
+        """Assemble shared inputs for DTR exports (PDF and CSV).
+
         Returns:
-            Tuple of (path, record_count)
+            Tuple of (grouped records, employee names, month holidays,
+            employee status by day, filtered record count)
         """
-        # Filter records based on selection
         filtered_records = self._filter_records_for_dtr(selection, self.state.all_processed_records)
-        
-        # Get employee names and department info
-        # Use full_name for DTR report if available; otherwise fall back to name.
+
+        # Use full_name for DTR output if available; otherwise fall back to name.
         employee_names = {
             emp.device_user_id: (emp.full_name or emp.name)
             for emp in self.registry.all_employees()
         }
-        department_names = {dept.department_id: dept.name for dept in self.registry.all_departments()}
-        department_heads = {
-            dept.department_id: dept.head_name
-            for dept in self.registry.all_departments()
-            if dept.head_name is not None
-        }
-        department_head_positions = {
-            dept.department_id: dept.head_position
-            for dept in self.registry.all_departments()
-            if dept.head_position is not None
-        }
-        employee_departments = {
-            emp.device_user_id: emp.department_id
-            for emp in self.registry.all_employees()
-            if emp.department_id is not None
-        }
-        employee_positions = {
-            emp.device_user_id: emp.position
-            for emp in self.registry.all_employees()
-            if emp.position is not None
-        }
 
-        # Group records by employee
         grouped = group_records_by_employee(filtered_records)
 
         # Ensure employees in scope but with zero punches for the month are
-        # still included so they get a blank DTR page (with weekday undertime)
-        # instead of being dropped and producing a corrupt/empty PDF.
+        # still included so they get a blank DTR (with weekday undertime)
+        # instead of being dropped from the output.
         in_scope_ids = self._in_scope_employee_ids(selection)
         for emp_id in in_scope_ids:
             grouped.setdefault(emp_id, [])
@@ -334,6 +306,52 @@ class UIController:
         employee_status = {
             emp_id: self.registry.get_employee_status_for_month(emp_id, month.year, month.month)
             for emp_id in grouped
+        }
+
+        return grouped, employee_names, holidays, employee_status, len(filtered_records)
+
+    def generate_dtr_pdf(
+        self,
+        selection: dict,
+        month: date,
+        path: Path,
+    ) -> tuple[str, int]:
+        """Generate DTR PDF report.
+
+        Args:
+            selection: Selection dictionary from PDF dialog
+            month: Month for the report
+            path: Output file path
+
+        Returns:
+            Tuple of (path, record_count)
+        """
+        grouped, employee_names, holidays, employee_status, record_count = (
+            self._prepare_dtr_export(selection, month)
+        )
+
+        departments = self.registry.all_departments()
+        employees = self.registry.all_employees()
+        department_names = {dept.department_id: dept.name for dept in departments}
+        department_heads = {
+            dept.department_id: dept.head_name
+            for dept in departments
+            if dept.head_name is not None
+        }
+        department_head_positions = {
+            dept.department_id: dept.head_position
+            for dept in departments
+            if dept.head_position is not None
+        }
+        employee_departments = {
+            emp.device_user_id: emp.department_id
+            for emp in employees
+            if emp.department_id is not None
+        }
+        employee_positions = {
+            emp.device_user_id: emp.position
+            for emp in employees
+            if emp.position is not None
         }
 
         generate_dtr_pdf(
@@ -350,8 +368,44 @@ class UIController:
             employee_status=employee_status,
             dtr_overrides=self.state.dtr_overrides,
         )
-        
-        return str(path), len(filtered_records)
+
+        return str(path), record_count
+
+    def generate_dtr_csv(
+        self,
+        selection: dict,
+        month: date,
+        path: Path,
+    ) -> tuple[str, int]:
+        """Export the generated DTR (one row per employee per day) to CSV.
+
+        Mirrors the DTR PDF output: AM/PM slots with manual slot overrides
+        applied, Remarks with holiday and filed-status labels, and computed
+        undertime.
+
+        Args:
+            selection: Selection dictionary from the scope dialog
+            month: Month for the export
+            path: Output file path
+
+        Returns:
+            Tuple of (path, row_count)
+        """
+        grouped, employee_names, holidays, employee_status, _ = (
+            self._prepare_dtr_export(selection, month)
+        )
+
+        row_count = write_dtr_csv(
+            employee_records=grouped,
+            month=month,
+            output_path=path,
+            employee_names=employee_names,
+            month_holidays=holidays,
+            employee_status=employee_status,
+            dtr_overrides=self.state.dtr_overrides,
+        )
+
+        return str(path), row_count
 
     def _filter_records_for_dtr(
         self,

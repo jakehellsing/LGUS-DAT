@@ -788,7 +788,7 @@ Main Window
 |   |   editor with IN/OUT status editing, manual DTR slot overrides, and a
 |   |   per-employee Export DTR PDF button
 |   |-- Attendance Filing page: holidays, leave types, employee filings
-|   |-- Reports page: DTR PDF, CSV, attlog export
+|   |-- Reports page: DTR PDF, DTR CSV, punch CSV, attlog export
 |   |-- Employees page: employee and department management, including department head name and position on the DTR signature line
 |
 |-- Status bar
@@ -927,6 +927,24 @@ configure attendance statuses that modify the DTR `Remarks` column.
     that generates a single-employee DTR PDF for the employee and month
     currently in view, so punch fixes and slot overrides can be exported
     without going through the Reports page scope dialog.
+
+### DTR CSV Export
+
+-   The **Reports** page provides an **Export DTR CSV** button that exports the
+    generated DTR as comma-separated data for a selected month, using the same
+    scope dialog (All / By Department / By Employee) as the DTR PDF.
+-   The export emits one row per employee per calendar day of the month,
+    including in-scope employees with zero punches (matching the PDF).
+-   Columns: `Employee ID`, `Employee Name`, `Date` (YYYY-MM-DD), `Day`,
+    `AM Arrival`, `AM Departure`, `PM Arrival`, `PM Departure`,
+    `Undertime Hr`, `Undertime Min`, `Remarks`.
+-   The rows are computed by the same slot mapping, remarks, and undertime
+    functions used by the DTR PDF, so manual slot overrides, filed
+    leave/status labels, holidays, and undertime values are identical between
+    the CSV and PDF outputs.
+-   This export is intended as the data contract for downstream systems
+    (e.g., an HRIS attendance module) that need the finalized DTR rather than
+    raw punches.
 
 ## 28. Distribution, Installation, and Data Storage
 

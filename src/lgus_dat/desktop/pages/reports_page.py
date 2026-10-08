@@ -148,7 +148,7 @@ class ReportsPage(QWidget):
         header.setStyleSheet("font-size: 24px; font-weight: bold;")
         layout.addWidget(header)
 
-        info = QLabel("Generate DTR PDF, CSV, and attlog exports here.")
+        info = QLabel("Generate DTR PDF/CSV reports, punch CSV, and attlog exports here.")
         layout.addWidget(info)
 
         # DTR PDF section
@@ -169,6 +169,14 @@ class ReportsPage(QWidget):
         pdf_btn = QPushButton("Generate DTR PDF")
         pdf_btn.clicked.connect(self._generate_pdf)
         pdf_fields.addWidget(pdf_btn)
+
+        dtr_csv_btn = QPushButton("Export DTR CSV")
+        dtr_csv_btn.setToolTip(
+            "Export the generated DTR (AM/PM slots, undertime, remarks) "
+            "as CSV for the selected month"
+        )
+        dtr_csv_btn.clicked.connect(self._export_dtr_csv)
+        pdf_fields.addWidget(dtr_csv_btn)
 
         pdf_fields.addStretch()
         pdf_layout.addLayout(pdf_fields)
@@ -225,6 +233,36 @@ class ReportsPage(QWidget):
 
         ProgressDialog("Generating", "Creating DTR PDF...", self).run_task(
             lambda: self.controller.ui.generate_dtr_pdf(selection, report_date, Path(path))
+        )
+
+    def _export_dtr_csv(self) -> None:
+        month_text = self.month_edit.text().strip()
+        try:
+            report_date = date.fromisoformat(f"{month_text}-01")
+        except ValueError:
+            return
+
+        scope_dialog = DTRScopeDialog(self.controller, self)
+        if scope_dialog.exec() != QDialog.Accepted:
+            return
+
+        self.controller.ui.ensure_processed()
+        if not self.controller.ui.state.all_processed_records:
+            return
+
+        selection = scope_dialog.get_selection()
+
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save DTR CSV",
+            f"DTR_{report_date.strftime('%Y_%m')}.csv",
+            "CSV files (*.csv);;All files (*.*)",
+        )
+        if not path:
+            return
+
+        ProgressDialog("Exporting", "Creating DTR CSV...", self).run_task(
+            lambda: self.controller.ui.generate_dtr_csv(selection, report_date, Path(path))
         )
 
     def _export_csv(self) -> None:

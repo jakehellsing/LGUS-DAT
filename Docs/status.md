@@ -8,6 +8,8 @@
 
 ### Status
 
+Added an **Export DTR CSV** button to the Reports page. It exports the generated DTR as CSV for a selected month using the same scope dialog as the DTR PDF, emitting one row per employee per calendar day (`Employee ID`, `Employee Name`, `Date`, `Day`, `AM Arrival`, `AM Departure`, `PM Arrival`, `PM Departure`, `Undertime Hr`, `Undertime Min`, `Remarks`). The export reuses the same slot-mapping, remarks, and undertime computation as the DTR PDF (`src/lgus_dat/output/dtr_csv_writer.py`), so manual slot overrides, filed leave/status labels, holidays, and undertime values match the PDF exactly — including rows for in-scope employees with zero punches. This provides the finalized-DTR data contract for downstream systems such as an HRIS attendance module. The shared DTR export assembly in `core/controller.py` was factored into `_prepare_dtr_export`, now used by both `generate_dtr_pdf` and the new `generate_dtr_csv`.
+
 Fixed a crash when printing a DTR for an employee whose report content exceeded the single-page frame height (for example, `Remarks` cells wrapping to extra lines for combined holiday/status labels). Each half-page DTR is now wrapped in a ReportLab `KeepInFrame` shrink container in `src/lgus_dat/output/pdf_writer.py`, so an oversized DTR scales down to fit the page instead of raising a "flowable too large" `LayoutError` and aborting the entire PDF build.
 
 Improved the **Attendance Filing** page to support batch leave/status filing: the employee list now displays full names, supports real-time filtering, and shows a separate **Selected employees** panel that updates in real time as employees are checked or unchecked. Clicking an employee row toggles the checkbox, and filing errors are now shown to the user instead of failing silently.
@@ -113,6 +115,7 @@ Polished the PySide6 desktop UI with a modern theme: updated sidebar, button, ta
 - [x] Full 1-31 day DTR preview for employees with zero punches in the Daily DTR Review page
 - [x] Department name display (`ID - Name`) in the Employees table
 - [x] Per-employee DTR PDF export button on the Daily DTR Review page
+- [x] DTR CSV export (one row per employee-day with slots, undertime, remarks) on the Reports page
 
 ### In Progress
 
